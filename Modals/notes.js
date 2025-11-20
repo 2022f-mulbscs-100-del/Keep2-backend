@@ -9,28 +9,31 @@
 //       type: String,
 //     },
 //   },
-//   { timestamps: true } 
+//   { timestamps: true }
 // );
 
 // const Notes = mongoose.model("Notes", notesSchema);
 
 // export default Notes;
 
-
-import {sequelize} from "../config/db.confing.js";
+import { sequelize } from "../config/db.confing.js";
 import { DataTypes } from "sequelize";
 
-const Notes  = sequelize.define('Notes', {
+const Notes = sequelize.define(
+  "Notes",
+  {
     title: {
-        type: DataTypes.STRING,
-        allowNull: false
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     description: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    }
-}, {
-    timestamps: true 
-});
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 export default Notes;

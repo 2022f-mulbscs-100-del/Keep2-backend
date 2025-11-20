@@ -11,9 +11,7 @@ dotenv.config();
 // } catch (error) {
 //     console.log(error)
 // }
-// } 
-
-
+// }
 
 // import { Pool } from "pg"
 // const pool = new Pool({
@@ -27,14 +25,12 @@ dotenv.config();
 //     console.log("Database connected")
 // })
 
-
 // export default pool;
-
 
 // my sql database connection
 import { Sequelize } from "sequelize";
-
 const sequelize = new Sequelize(
+  /* eslint-disable */
   process.env.DATABASE,
   process.env.USER_NAME,
   process.env.PASSWORD,
@@ -43,16 +39,16 @@ const sequelize = new Sequelize(
     dialect: "mysql",
   }
 );
-
+//eslint-enable-next-line
 async function authenticateDB() {
-    try {
-        await sequelize.authenticate();
-        console.log('Database connection has been established successfully.');
+  try {
+    await sequelize.authenticate();
+    console.log("Database connection has been established successfully.");
 
-          await sequelize.sync(); 
-        console.log('Database schema synchronized (Tables created/updated).');
-    } catch (error) {
-        console.error('Unable to connect to the database:', error);
-    }
+    await sequelize.sync();
+    console.log("Database schema synchronized (Tables created/updated).");
+  } catch (error) {
+    console.error("Unable to connect to the database:", error);
+  }
 }
 export { sequelize, authenticateDB };
