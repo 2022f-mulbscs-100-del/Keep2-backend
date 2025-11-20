@@ -1,11 +1,12 @@
-import express from 'express';
-import { deleteSandbox, generateSandbox } from '../Controllers/SandboxController.js';
+import express from "express";
+import {
+  deleteSandbox,
+  generateSandbox,
+} from "../Controllers/SandboxController.js";
 
+const Sandboxroute = express.Router();
 
-
-const Sandboxroute = express.Router()
-
-Sandboxroute.post('/generateSandbox',generateSandbox);
-Sandboxroute.delete('/deleteSandbox',deleteSandbox);
+Sandboxroute.post("/generateSandbox", generateSandbox);
+Sandboxroute.delete("/deleteSandbox", deleteSandbox);
 
 export default Sandboxroute;

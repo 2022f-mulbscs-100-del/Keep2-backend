@@ -1,0 +1,23 @@
+name: linting
+on: 
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+    
+    - name: setup node
+      uses: actions/setup-node@v6
+      with:
+        node-version: '18'
+  
+    - name: installing dependencies & perform linting 
+      run: |
+        npm install
+        npx eslint . --fix
+        npx prettier . --write
+
