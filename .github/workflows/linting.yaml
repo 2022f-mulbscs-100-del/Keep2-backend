@@ -5,7 +5,7 @@ on:
       - main
   workflow_dispatch:
 jobs:
-  deploy:
+  linting:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
