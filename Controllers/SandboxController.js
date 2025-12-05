@@ -2,7 +2,7 @@ import Notes from "../Modals/notes.js";
 import { faker } from "@faker-js/faker";
 
 export const generateSandbox = async (req, res) => {
-  const { numNotes } = req.body;
+  const { numNotes, useRandomData } = req.body;
   if (numNotes <= 0 || numNotes > 100) {
     res.status(400).json({ message: "numNotes must be between 1 and 100" });
     return;
@@ -18,12 +18,15 @@ export const generateSandbox = async (req, res) => {
         while (notesCount < numNotes) {
           const hasTitle = Math.random() < 0.8;
           const hasDescription = Math.random() < 0.8;
+          let hasPinned = Math.random() < 0.8;
           if (!hasTitle && !hasDescription) {
             continue;
           }
           const newNotes = await Notes.create({
             title: hasTitle ? faker.internet.username() : "",
             description: hasDescription ? faker.lorem.paragraph() : "",
+            pinned:
+              useRandomData && hasPinned ? faker.datatype.boolean() : false,
           });
           notesCount++;
           sandboxNotes.push(newNotes);
