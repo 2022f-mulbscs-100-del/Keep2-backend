@@ -21,6 +21,13 @@ app.use(
 app.use("/api", route);
 app.use("/api", Sandboxroute);
 
+app.use((err, req, res) => {
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message,
+  });
+});
+
 authenticateDB();
 //eslint-disable-next-line no-undef
 app.listen(process.env.SERVER_PORT, () => {
