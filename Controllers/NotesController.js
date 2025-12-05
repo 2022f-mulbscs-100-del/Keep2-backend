@@ -1,8 +1,7 @@
 import notes from "../Modals/notes.js";
-
-export const addNotes = async (req, res) => {
+import { ErrorHandler } from "../utils/ErrorHandler.js";
+export const addNotes = async (req, res, next) => {
   try {
-    console.log(req.body);
     const { title, description, pinned } = req.body;
     const newNote = await notes.create({
       title,
@@ -14,82 +13,74 @@ export const addNotes = async (req, res) => {
 
     res.json(newNote);
   } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    next(error);
   }
 };
 
-export const pinnedNotes = async (req, res) => {
+export const pinnedNotes = async (req, res, next) => {
   const { id } = req.params;
   const { pinned } = req.body;
-  console.log(id, pinned);
   try {
+    const findNote = await notes.findByPk(id);
+    if (!findNote) {
+      return next(ErrorHandler(404, "Note not found"));
+    }
     await notes.update({ pinned }, { where: { id } });
     res.json("Note Updated");
   } catch (error) {
-    res
-      .status(error.status || 500)
-      .json(error.message || "Internal Server Error");
+    next(error);
   }
 };
 
-export const deleteNotes = async (req, res) => {
+export const deleteNotes = async (req, res, next) => {
   try {
     await notes.destroy({ where: { isDeleted: true } });
     res.json("Note Deleted");
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    next(error);
   }
 };
 
-export const deleteNotesById = async (req, res) => {
+export const deleteNotesById = async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    const deletedNote = await notes.destroy({ where: { id } });
-
-    if (!deletedNote) {
-      return res.status(404).json({ message: "Note not found" });
+    const note = await notes.findByPk(id);
+    if (!note) {
+      return next(ErrorHandler(404, "Note not found"));
     }
+    await notes.destroy({ where: { id } });
 
     res.json({ message: "Note deleted successfully" });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    next(error);
   }
 };
 
-export const getArchivedNotes = async (req, res) => {
+export const getArchivedNotes = async (req, res, next) => {
   try {
     const archivedNotes = await notes.findAll({
       where: { isArchived: true, isDeleted: false },
     });
     res.json(archivedNotes);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    next(error);
   }
 };
 
-export const updateNotes = async (req, res) => {
+export const updateNotes = async (req, res, next) => {
   const { id } = req.params;
   const { title, description, pinned, isDeleted, isArchived, imageUrl } =
     req.body;
-  const note = await notes.findByPk(id);
-  const existingImages = JSON.parse(note.dataValues.image || "[]");
-  const newImages = Array.isArray(imageUrl) ? imageUrl : [];
-  console.log("gettin from db", existingImages);
-  console.log("getting from req body", newImages);
-  const imageUrlCombined = [...existingImages, ...newImages];
-  console.log("merging images to store in db", imageUrlCombined);
 
   try {
+    const note = await notes.findByPk(id);
+    if (!note) {
+      return next(ErrorHandler(404, "Note not found"));
+    }
+    const existingImages = JSON.parse(note.dataValues.image || "[]");
+    const newImages = Array.isArray(imageUrl) ? imageUrl : [];
+    const imageUrlCombined = [...existingImages, ...newImages];
     const updatedNote = await notes.update(
       {
         title,
@@ -105,12 +96,10 @@ export const updateNotes = async (req, res) => {
     if (!updatedNote) {
       return res.status(404).json({ message: "Note not found" });
     }
-    const note = await notes.findByPk(id);
-    res.json(note);
+    const newNote = await notes.findByPk(id);
+    res.json(newNote);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    next(error);
   }
 };
 
@@ -122,7 +111,7 @@ export const getNotes = async (req, res) => {
   res.json(allNotes);
 };
 
-export const getNotesById = async (req, res) => {
+export const getNotesById = async (req, res, next) => {
   const { id } = req.params;
   console.log(id);
 
@@ -130,13 +119,11 @@ export const getNotesById = async (req, res) => {
     const note = await notes.findByPk(id);
     res.json(note);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    next(error);
   }
 };
 
-export const getDeletedNotes = async (req, res) => {
+export const getDeletedNotes = async (req, res, next) => {
   try {
     const deletedNotes = await notes.findAll({
       where: { isDeleted: true },
@@ -144,9 +131,7 @@ export const getDeletedNotes = async (req, res) => {
     });
     res.json(deletedNotes);
   } catch (error) {
-    res
-      .status(error.status || 500)
-      .json(error.message || "Internal Server Error");
+    next(error);
   }
 };
 

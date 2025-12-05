@@ -1,14 +1,15 @@
 import Notes from "../Modals/notes.js";
 import { faker } from "@faker-js/faker";
+import { ErrorHandler } from "../utils/ErrorHandler.js";
 
-export const generateSandbox = async (req, res) => {
+export const generateSandbox = async (req, res, next) => {
   const { numNotes, useRandomData } = req.body;
   if (numNotes <= 0 || numNotes > 100) {
-    res.status(400).json({ message: "numNotes must be between 1 and 100" });
+    next(ErrorHandler(400, "numNotes must be between 1 and 100"));
     return;
   } else {
     if (!numNotes) {
-      res.status(400).json({ message: "numNotes is required" });
+      next(ErrorHandler(400, "numNotes is required"));
       return;
     } else {
       try {
@@ -36,22 +37,17 @@ export const generateSandbox = async (req, res) => {
           notes: sandboxNotes,
         });
       } catch (error) {
-        res
-          .status(500)
-          .json({ message: "Internal Server Error", error: error.message });
+        next(error);
       }
     }
   }
 };
 
-export const deleteSandbox = async (req, res) => {
+export const deleteSandbox = async (req, res, next) => {
   try {
     Notes.destroy({ where: {}, truncate: true });
     res.status(200).json({ message: "Deleted  Notes Successfully" });
   } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    next(error);
   }
 };
