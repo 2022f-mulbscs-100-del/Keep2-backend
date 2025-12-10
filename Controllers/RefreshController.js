@@ -5,20 +5,19 @@ import User from "../Modals/UserModal.js";
 
 export default async function Refresh(req, res, next) {
   const refreshToken = req.cookies.refreshToken;
-  console.log("refreshTOken", refreshToken);
+  console.log("Received refresh token:", refreshToken);
   if (!refreshToken) {
     return next(ErrorHandler(401, "Unauthorized"));
   }
-  console.log("REFRESH_SECRET exists?", !!process.env.REFRESH_SECRET);
   try {
     const payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
 
-    const user = await User.findByPk(payload.id);
-    if (!user) return next(ErrorHandler(404, "User not found"));
+    const rest = await User.findByPk(payload.id);
+    if (!rest) return next(ErrorHandler(404, "User not found"));
 
-    const newAccessToken = AccessToken(user);
+    const newAccessToken = AccessToken(rest);
 
-    res.status(200).json({ accessToken: newAccessToken });
+    res.status(200).json({ accessToken: newAccessToken, rest });
   } catch (error) {
     console.error(error);
     if (error.name === "TokenExpiredError") {

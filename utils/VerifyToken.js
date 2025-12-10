@@ -15,11 +15,11 @@ export const VerifyToken = (req, res, next) => {
 
     jwt.verify(token, process.env.ACCESS_SECRET, (error, payload) => {
       if (error) {
-        return next(ErrorHandler(403, "Forbidden"));
+        return next(ErrorHandler(401, "Wrong token"));
       }
       req.user = payload;
+      next();
     });
-    next();
   } catch (error) {
     next(error);
   }

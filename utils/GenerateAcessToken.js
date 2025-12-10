@@ -24,7 +24,7 @@ export const AccessToken = (user) => {
       data: token,
     },
     process.env.ACCESS_SECRET,
-    { expiresIn: "15m" }
+    { expiresIn: "1m" }
   );
 
   return NewRefreshToken;
