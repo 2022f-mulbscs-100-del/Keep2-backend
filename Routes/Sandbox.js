@@ -3,10 +3,10 @@ import {
   deleteSandbox,
   generateSandbox,
 } from "../Controllers/SandboxController.js";
+import { VerifyToken } from "../utils/VerifyToken.js";
 
 const Sandboxroute = express.Router();
 
-Sandboxroute.post("/generateSandbox", generateSandbox);
-Sandboxroute.delete("/deleteSandbox", deleteSandbox);
-
+Sandboxroute.post("/generateSandbox", VerifyToken, generateSandbox);
+Sandboxroute.delete("/deleteSandbox", VerifyToken, deleteSandbox);
 export default Sandboxroute;
