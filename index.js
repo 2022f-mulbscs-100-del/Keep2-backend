@@ -8,13 +8,14 @@ import Refresh from "./Controllers/RefreshController.js";
 dotenv.config();
 import AuthRoute from "./Routes/AuthRoute.js";
 import cookieParser from "cookie-parser";
+import UserRoute from "./Routes/UserRoute.js";
 const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5174",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   })
@@ -23,6 +24,7 @@ app.use(
 app.use("/api", route);
 app.use("/api", AuthRoute);
 app.use("/api", Sandboxroute);
+app.use("/api", UserRoute);
 app.get("/refresh", Refresh);
 
 //eslint-disable-next-line
