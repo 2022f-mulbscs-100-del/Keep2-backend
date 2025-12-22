@@ -10,6 +10,7 @@ import AuthRoute from "./Routes/AuthRoute.js";
 import cookieParser from "cookie-parser";
 import UserRoute from "./Routes/UserRoute.js";
 import paymentRoute from "./Routes/paymentRoute.js";
+import sendEmail from "./Routes/EmailRoute.js";
 const app = express();
 
 app.use(express.json());
@@ -27,6 +28,7 @@ app.use("/api", AuthRoute);
 app.use("/api", Sandboxroute);
 app.use("/api", UserRoute);
 app.use("/api", paymentRoute);
+app.use("/api", sendEmail);
 app.get("/refresh", Refresh);
 
 //eslint-disable-next-line
