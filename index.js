@@ -11,13 +11,14 @@ import cookieParser from "cookie-parser";
 import UserRoute from "./Routes/UserRoute.js";
 import paymentRoute from "./Routes/paymentRoute.js";
 import sendEmail from "./Routes/EmailRoute.js";
+import verifyTurnstileToken from "./Routes/TurnstileRoute.js";
 const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5174",
+    origin: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   })
@@ -30,6 +31,7 @@ app.use("/api", UserRoute);
 app.use("/api", paymentRoute);
 app.use("/api", sendEmail);
 app.get("/refresh", Refresh);
+app.use("/api", verifyTurnstileToken);
 
 //eslint-disable-next-line
 app.use((err, req, res, next) => {
@@ -38,8 +40,7 @@ app.use((err, req, res, next) => {
     message: err.message,
   });
 });
-
 authenticateDB();
 app.listen(process.env.SERVER_PORT, () => {
-  console.log("running");
+  console.log(`Server is running on port ${process.env.SERVER_PORT}`);
 });
