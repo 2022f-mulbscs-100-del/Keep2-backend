@@ -30,6 +30,20 @@ const User = sequelize.define(
       type: DataTypes.DATE,
       defaultValue: undefined,
     },
+    isTwoFaEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    isTwoFaVerifiedExpiration: {
+      type: DataTypes.DATE,
+      defaultValue: undefined,
+    },
+    twoFaSecret: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     timestamps: true,

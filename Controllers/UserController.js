@@ -21,7 +21,7 @@ export const userProfile = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next) => {
   const { profileData } = req.body;
-  const { name, profileImage } = profileData;
+  const { name, profileImage, isTwoFaEnabled } = profileData;
   console.log("gettin data", name, profileImage);
   const userData = req.user;
   console.log(userData);
@@ -32,6 +32,9 @@ export const updateProfile = async (req, res, next) => {
       return next(ErrorHandler(404, "not found"));
     }
     await user.update({ name, profileImage });
+    if (isTwoFaEnabled !== undefined) {
+      user.isTwoFaEnabled = isTwoFaEnabled;
+    }
     await user.save();
     //eslint-disable-next-line
     const { password, ...rest } = user.dataValues;
