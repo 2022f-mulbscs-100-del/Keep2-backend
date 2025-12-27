@@ -9,7 +9,7 @@ import {
 const route = exppress.Router();
 
 route.get("/userProfile", VerifyToken, userProfile);
-route.post("/updateProfile", VerifyToken, updateProfile);
+route.patch("/updateProfile", VerifyToken, updateProfile);
 route.delete("/deleteProfile", VerifyToken, DeleteProfile);
 
 export default route;

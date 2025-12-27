@@ -51,8 +51,6 @@ export const Login = async (req, res, next) => {
     if (!user) {
       return next(ErrorHandler(400, "User not found"));
     }
-    const refreshToken = RefreshToken(user);
-    const accessToken = AccessToken(user);
 
     const isPasswordCorrect = await bcrypt.compare(
       pass,
@@ -62,6 +60,44 @@ export const Login = async (req, res, next) => {
     if (!isPasswordCorrect) {
       next(ErrorHandler(400, "Invalid Password"));
     }
+
+    if (user.isTwoFaEnabled) {
+      console.log("herer we are and its working");
+      try {
+        const token = Math.floor(100000 + Math.random() * 900000);
+        user.twoFaSecret = token;
+        const expiryDate = Date.now() + 10 * 60 * 1000;
+        const dateObj = new Date(expiryDate);
+        user.isTwoFaVerifiedExpiration = dateObj.getTime();
+        await user.save();
+        await axios.post(
+          "https://api.brevo.com/v3/smtp/email",
+          {
+            to: [{ email: user.email, name: user.name || "User" }],
+            templateId: 3,
+            params: {
+              code: token,
+            },
+          },
+          {
+            headers: {
+              "api-key": process.env.BREVO_API_KEY,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        console.log("email sent");
+      } catch (error) {
+        next(error);
+      }
+
+      return res
+        .status(200)
+        .json({ message: "2FA enabled", isTwoFaEnabled: user.isTwoFaEnabled });
+    }
+
+    const refreshToken = RefreshToken(user);
+    const accessToken = AccessToken(user);
     //eslint-disable-next-line
     const { password, ...rest } = user.dataValues;
 
@@ -201,6 +237,45 @@ export const forgetPasswordToken = async (req, res, next) => {
     res
       .status(200)
       .json({ uniqueToken, message: "token generated sucessfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const TwoFaLogin = async (req, res, next) => {
+  const { email, twoFaCode } = req.body;
+  try {
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      return next(ErrorHandler(400, "User not found"));
+    }
+    console.log(user.twoFaSecret, twoFaCode);
+    if (user.twoFaSecret != twoFaCode) {
+      return next(ErrorHandler(400, "Invalid 2FA Code"));
+    }
+
+    user.twoFaSecret = null;
+    user.isTwoFaVerifiedExpiration = null;
+    await user.save();
+
+    const refreshToken = RefreshToken(user);
+    const accessToken = AccessToken(user);
+
+    //eslint-disable-next-line
+    const { password, ...rest } = user.dataValues;
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      sameSite: "strict", // CSRF protection
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+    res.status(200).json({
+      rest,
+      accessToken,
+    });
   } catch (error) {
     next(error);
   }

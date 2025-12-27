@@ -6,6 +6,7 @@ import {
   Logout,
   SignUp,
   forgetPasswordToken,
+  TwoFaLogin,
 } from "../Controllers/AuthController.js";
 
 const route = express.Router();
@@ -16,5 +17,6 @@ route.get("/logout", Logout);
 route.post("/code-check", CodeCheck);
 route.post("/reset-password", resetPassword);
 route.post("/forget-password-token", forgetPasswordToken);
+route.post("/2fa-login", TwoFaLogin);
 
 export default route;
