@@ -1,6 +1,8 @@
 import User from "../Modals/UserModal.js";
 import { ErrorHandler } from "../utils/ErrorHandler.js";
 import bcrypt from "bcrypt";
+// import { RefreshToken } from "../utils/GenerateRefreshToken.js";
+import { logger } from "../utils/Logger.js";
 
 export const userProfile = async (req, res, next) => {
   const userData = req.user;
@@ -21,10 +23,16 @@ export const userProfile = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next) => {
   const { profileData } = req.body;
-  const { name, profileImage, isTwoFaEnabled } = profileData;
-  console.log("gettin data", name, profileImage);
+  const {
+    name,
+    profileImage,
+    isTwoFaEnabled,
+    autoLogoutEnabled,
+    autoLogoutTime,
+  } = profileData;
+  logger.info("getting data", name, profileImage);
   const userData = req.user;
-  console.log(userData);
+  logger.info(userData);
 
   try {
     const user = await User.findByPk(userData.id);
@@ -35,10 +43,16 @@ export const updateProfile = async (req, res, next) => {
     if (isTwoFaEnabled !== undefined) {
       user.isTwoFaEnabled = isTwoFaEnabled;
     }
+    if (autoLogoutEnabled !== undefined) {
+      user.autoLogoutEnabled = autoLogoutEnabled;
+    }
+    if (autoLogoutTime !== undefined) {
+      user.autoLogoutTime = autoLogoutTime;
+    }
     await user.save();
     //eslint-disable-next-line
     const { password, ...rest } = user.dataValues;
-    console.log("updated data", rest);
+    logger.info("updated data", rest);
     res.status(200).json(rest);
   } catch (error) {
     next(error);
@@ -48,7 +62,7 @@ export const updateProfile = async (req, res, next) => {
 export const DeleteProfile = async (req, res, next) => {
   const userData = req.user;
   const { password } = req.body;
-  console.log(userData);
+  logger.info(userData);
   try {
     const user = await User.findByPk(userData.id);
     if (!user) {
@@ -73,3 +87,37 @@ export const DeleteProfile = async (req, res, next) => {
     next(error);
   }
 };
+
+// export const AutoLogout = async (req, res, next) => {
+//   const { autoLogoutTime } = req.body;
+//   const userData = req.user;
+//   logger.info("params from autologout controller : " , {autoLogoutTime, userData});
+//   try {
+
+//     const user = await User.findByPk(userData.id);
+//     if (!user) {
+//       logger.error("AutoLogout: user not found", { userId: userData.id });
+//       return next(ErrorHandler(404, "user not found"));
+//     }
+//     if(!autoLogoutTime){
+//       logger.error("AutoLogout: autoLogoutTime is required", { userId: userData.id });
+//       return next(ErrorHandler(400, "Auto logout time is required"));
+//     }
+//     if (autoLogoutTime !== undefined) {
+//       user.autoLogoutTime = autoLogoutTime;
+//     }
+//     await user.save();
+//     const refreshToken = RefreshToken(user, autoLogoutTime);
+//     res.cookie("refreshToken", refreshToken, {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === "production",
+//       sameSite: "strict",
+//       maxAge: autoLogoutTime * 60 * 1000,
+//       path: "/",
+//     });
+//     res.status(200).json({ message: "Auto logout time updated successfully" });
+//   } catch (error) {
+//     logger.error("AutoLogout: error updating auto logout time", { userId: userData.id, error: error.message });
+//     next(error);
+//   }
+// };

@@ -5,6 +5,7 @@ import { RefreshToken } from "../utils/GenerateRefreshToken.js";
 import { AccessToken } from "../utils/GenerateAcessToken.js";
 import { checkExpiration } from "../utils/CheckExpiration.js";
 import axios from "axios";
+import { logger } from "../utils/Logger.js";
 
 export const SignUp = async (req, res, next) => {
   const { name, email, password: preHashPassword } = req.body;
@@ -45,10 +46,13 @@ export const SignUp = async (req, res, next) => {
 
 export const Login = async (req, res, next) => {
   const { email, password: pass } = req.body;
+  logger.info("params from login controller : ", { email });
+  logger.info("login attempt for email: ", { email });
   try {
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
+      logger.warn("Login failed", { email, reason: "User not found" });
       return next(ErrorHandler(400, "User not found"));
     }
 
@@ -58,11 +62,11 @@ export const Login = async (req, res, next) => {
     );
 
     if (!isPasswordCorrect) {
-      next(ErrorHandler(400, "Invalid Password"));
+      logger.warn("Login failed for email: ", email, " - Invalid Password");
+      return next(ErrorHandler(400, "Invalid Password"));
     }
 
     if (user.isTwoFaEnabled) {
-      console.log("herer we are and its working");
       try {
         const token = Math.floor(100000 + Math.random() * 900000);
         user.twoFaSecret = token;
@@ -70,6 +74,7 @@ export const Login = async (req, res, next) => {
         const dateObj = new Date(expiryDate);
         user.isTwoFaVerifiedExpiration = dateObj.getTime();
         await user.save();
+        logger.info("2FA token generated for email: ", email);
         await axios.post(
           "https://api.brevo.com/v3/smtp/email",
           {
@@ -86,9 +91,15 @@ export const Login = async (req, res, next) => {
             },
           }
         );
-        console.log("email sent");
+        logger.info("2FA email sent to: ", email);
       } catch (error) {
         next(error);
+        logger.error(
+          "Error sending 2FA email to: ",
+          email,
+          " - ",
+          error.message
+        );
       }
 
       return res
@@ -172,8 +183,8 @@ export const CodeCheck = async (req, res, next) => {
       return ErrorHandler(404, "User not found");
     }
 
-    console.log("user", user);
-    console.log(user.resetPasswordToken, code);
+    logger.info("user", user);
+    logger.info(user.resetPasswordToken, code);
 
     if (user.resetPasswordToken === code) {
       if (checkExpiration(user.resetPasswordExpiry)) {
@@ -250,7 +261,7 @@ export const TwoFaLogin = async (req, res, next) => {
     if (!user) {
       return next(ErrorHandler(400, "User not found"));
     }
-    console.log(user.twoFaSecret, twoFaCode);
+    logger.info(user.twoFaSecret, twoFaCode);
     if (user.twoFaSecret != twoFaCode) {
       return next(ErrorHandler(400, "Invalid 2FA Code"));
     }

@@ -44,6 +44,16 @@ const User = sequelize.define(
       allowNull: true,
       defaultValue: null,
     },
+    autoLogoutEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    autoLogoutTime: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     timestamps: true,
