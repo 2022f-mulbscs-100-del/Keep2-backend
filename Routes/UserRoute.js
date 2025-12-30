@@ -11,5 +11,6 @@ const route = exppress.Router();
 route.get("/userProfile", VerifyToken, userProfile);
 route.patch("/updateProfile", VerifyToken, updateProfile);
 route.delete("/deleteProfile", VerifyToken, DeleteProfile);
+// route.post("/auto-logout",VerifyToken,AutoLogout);
 
 export default route;

@@ -16,8 +16,11 @@ export default async function Refresh(req, res, next) {
     if (!rest) return next(ErrorHandler(404, "User not found"));
 
     const newAccessToken = AccessToken(rest);
-
-    res.status(200).json({ accessToken: newAccessToken, rest });
+    //eslint-disable-next-line
+    const { password, ...restWithoutPassword } = rest.dataValues;
+    res
+      .status(200)
+      .json({ accessToken: newAccessToken, rest: restWithoutPassword });
   } catch (error) {
     console.error(error);
     if (error.name === "TokenExpiredError") {
