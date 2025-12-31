@@ -6,40 +6,110 @@ import { AccessToken } from "../utils/GenerateAcessToken.js";
 import { checkExpiration } from "../utils/CheckExpiration.js";
 import axios from "axios";
 import { logger } from "../utils/Logger.js";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const SignUp = async (req, res, next) => {
-  const { name, email, password: preHashPassword } = req.body;
+  const { name, email, password: preHashPassword, code } = req.body;
 
+  logger.info("params from signup controller : ", { name, email });
   try {
-    const checkUser = await User.findOne({
-      where: { email },
-    });
-    if (checkUser) {
-      return next(ErrorHandler(400, "User already exist"));
+    if (!code) {
+      const checkUser = await User.findOne({
+        where: { email },
+      });
+      if (checkUser) {
+        logger.warn("Signup failed", { email, reason: "User already exist" });
+        return next(ErrorHandler(400, "User already exist"));
+      }
+      const hashPassword = await bcrypt.hash(preHashPassword, 10);
+
+      const user = await User.create({
+        name,
+        email,
+        password: hashPassword,
+      });
+
+      const token = Math.floor(100000 + Math.random() * 900000);
+      user.signUpConfirmationToken = token;
+      const dateObj = new Date(Date.now() + 15 * 60 * 1000);
+      user.signUpConfirmationTokenExpiry = dateObj.getTime();
+
+      await user.save();
+
+      logger.info("signup token generated for email: ", email);
+      await axios.post(
+        "https://api.brevo.com/v3/smtp/email",
+        {
+          to: [{ email: user.email, name: user.name || "User" }],
+          templateId: 3,
+          params: {
+            code: token,
+          },
+        },
+        {
+          headers: {
+            "api-key": process.env.BREVO_API_KEY,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      logger.info("signup code confirmation email sent to: ", email);
+
+      return res.status(201).json({ message: "verify email" });
+    } else {
+      const user = await User.findOne({
+        where: { email },
+      });
+      if (user.signUpConfirmationToken === code) {
+        if (!checkExpiration(user.signUpConfirmationTokenExpiry)) {
+          logger.warn("Signup token expired for email: ", email);
+          return next(ErrorHandler(400, "Token expired"));
+        }
+        user.signUpConfirmationToken = null;
+        user.signUpConfirmationTokenExpiry = null;
+        user.signUpConfirmation = true;
+        await user.save();
+
+        try {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: user.name,
+          });
+
+          user.stripeCustomerId = customer.id;
+          await user.save();
+        } catch (error) {
+          logger.error(
+            "Error creating Stripe customer for email: ",
+            email,
+            " - ",
+            error.message
+          );
+          next(error);
+        }
+        const refreshToken = RefreshToken(user);
+        const accessToken = AccessToken(user);
+
+        res.cookie("refreshToken", refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: "/",
+        });
+        //eslint-disable-next-line
+        const { password, ...rest } = user.dataValues;
+
+        res.status(201).json({ rest, accessToken });
+      } else {
+        logger.warn("Signup failed for email: ", email, " - Invalid code");
+        return next(ErrorHandler(400, "Invalid code"));
+      }
     }
-    const hashPassword = await bcrypt.hash(preHashPassword, 10);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashPassword,
-    });
-
-    const refreshToken = RefreshToken(user);
-    const accessToken = AccessToken(user);
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/",
-    });
-    //eslint-disable-next-line
-    const { password, ...rest } = user.dataValues;
-
-    res.status(201).json({ rest, accessToken });
   } catch (error) {
+    logger.error("Signup error for email: ", email, " - ", error.message);
     next(error);
   }
 };
@@ -65,7 +135,40 @@ export const Login = async (req, res, next) => {
       logger.warn("Login failed for email: ", email, " - Invalid Password");
       return next(ErrorHandler(400, "Invalid Password"));
     }
+    if (user.signUpConfirmation === false) {
+      const token = Math.floor(100000 + Math.random() * 900000);
+      user.signUpConfirmationToken = token;
+      const dateObj = new Date(Date.now() + 15 * 60 * 1000);
+      user.signUpConfirmationTokenExpiry = dateObj.getTime();
 
+      await user.save();
+
+      try {
+        logger.info("signup token generated for email: ", email);
+
+        await axios.post(
+          "https://api.brevo.com/v3/smtp/email",
+          {
+            to: [{ email: user.email, name: user.name || "User" }],
+            templateId: 3,
+            params: {
+              code: token,
+            },
+          },
+          {
+            headers: {
+              "api-key": process.env.BREVO_API_KEY,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        logger.info("signup code confirmation email sent to: ", email);
+        logger.warn("Login failed", { email, reason: "Email not verified" });
+        return res.status(201).json({ message: "verify email" });
+      } catch (error) {
+        return next(error);
+      }
+    }
     if (user.isTwoFaEnabled) {
       try {
         const token = Math.floor(100000 + Math.random() * 900000);
@@ -123,6 +226,67 @@ export const Login = async (req, res, next) => {
       rest,
       accessToken,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const signUpConfirmation = async (req, res, next) => {
+  const { email, code } = req.body;
+
+  try {
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return next(ErrorHandler(404, "User not found"));
+    }
+
+    if (user.signUpConfirmationToken === code) {
+      if (!checkExpiration(user.signUpConfirmationTokenExpiry)) {
+        return next(ErrorHandler(400, "Token expired"));
+      }
+      user.signUpConfirmationToken = null;
+      user.signUpConfirmationTokenExpiry = null;
+      user.signUpConfirmation = true;
+      await user.save();
+
+      if (!user.stripeCustomerId) {
+        try {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: user.name,
+          });
+
+          user.stripeCustomerId = customer.id;
+          await user.save();
+        } catch (error) {
+          logger.error(
+            "Error creating Stripe customer for email: ",
+            email,
+            " - ",
+            error.message
+          );
+          next(error);
+        }
+      }
+      const refreshToken = RefreshToken(user);
+      const accessToken = AccessToken(user);
+      //eslint-disable-next-line
+      const { password, ...rest } = user.dataValues;
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // HTTPS only in production
+        sameSite: "strict", // CSRF protection
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
+      res.status(200).json({
+        rest,
+        accessToken,
+      });
+    } else {
+      return next(ErrorHandler(400, "Invalid code"));
+    }
   } catch (error) {
     next(error);
   }
