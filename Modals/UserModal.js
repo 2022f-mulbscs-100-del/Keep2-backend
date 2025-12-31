@@ -54,6 +54,23 @@ const User = sequelize.define(
       allowNull: true,
       defaultValue: null,
     },
+    signUpConfirmation: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    signUpConfirmationToken: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
+    signUpConfirmationTokenExpiry: {
+      type: DataTypes.DATE,
+      defaultValue: null,
+    },
+    stripeCustomerId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     timestamps: true,
