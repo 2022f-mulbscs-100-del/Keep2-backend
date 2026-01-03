@@ -98,7 +98,7 @@ export const SignUp = async (req, res, next) => {
         res.cookie("refreshToken", refreshToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
+          sameSite: "none",
           maxAge: 7 * 24 * 60 * 60 * 1000,
           path: "/",
         });
@@ -230,7 +230,7 @@ export const Login = async (req, res, next) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: "lax", // CSRF protection
+      sameSite: "none", // CSRF protection
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -309,7 +309,7 @@ export const signUpConfirmation = async (req, res, next) => {
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production", // HTTPS only in production
-        sameSite: "lax", // CSRF protection
+        sameSite: "none", // CSRF protection
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: "/",
       });
@@ -525,7 +525,7 @@ export const TwoFaLogin = async (req, res, next) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: "lax", // CSRF protection
+      sameSite: "none", // CSRF protection
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -653,7 +653,7 @@ export const LoginVerifyMFA = async (req, res, next) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: "lax", // CSRF protection
+      sameSite: "none", // CSRF protection
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
