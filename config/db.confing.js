@@ -1,5 +1,6 @@
 // import mongoose from "mongoose";
 import dotenv from "dotenv";
+import fs from "fs";
 dotenv.config();
 
 // export const connectDb =  async()=>{
@@ -30,13 +31,23 @@ dotenv.config();
 // my sql database connection
 import { Sequelize } from "sequelize";
 const sequelize = new Sequelize(
-  /* eslint-disable */
-  process.env.DATABASE,
-  process.env.USER_NAME,
-  process.env.PASSWORD,
+  process.env.DATABASE, // defaultdb
+  process.env.USER_NAME, // avnadmin (not USER_NAME)
+  process.env.PASSWORD, // your password
   {
-    host: process.env.HOST,
+    host: process.env.HOST, // keeper-sql-mul-6b79.l.aivencloud.com
+    port: process.env.SERVER_PORT, // ✅ Fixed: was incomplete
     dialect: "mysql",
+    dialectOptions: {
+      // ✅ Fixed: SSL goes here
+      ssl: {
+        rejectUnauthorized: true,
+        ca: fs.readFileSync("/home/dev/Downloads/ca.pem"),
+        // You might also need:
+        // ca: fs.readFileSync('/home/dev/Downloads/ca.pem')
+      },
+    },
+    logging: false, // Optional: disable SQL query logging
   }
 );
 //eslint-enable-next-line
