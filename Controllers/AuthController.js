@@ -433,7 +433,7 @@ export const Logout = (req, res, next) => {
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "none",
       path: "/",
     });
     logger.info("User logged out successfully");
