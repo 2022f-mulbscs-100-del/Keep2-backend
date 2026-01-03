@@ -67,4 +67,4 @@ async function authenticateDB() {
 
 authenticateDB();
 
-export default sequelize;
+export default { sequelize };
