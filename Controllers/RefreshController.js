@@ -2,10 +2,12 @@ import { ErrorHandler } from "../utils/ErrorHandler.js";
 import jwt from "jsonwebtoken";
 import { AccessToken } from "../utils/GenerateAcessToken.js";
 import User from "../Modals/UserModal.js";
+import { logger } from "../utils/Logger.js";
 
 export default async function Refresh(req, res, next) {
   const refreshToken = req.cookies.refreshToken;
   console.log("Received refresh token:", refreshToken);
+  logger.info("Received refresh token for refresh endpoint", { refreshToken });
   if (!refreshToken) {
     return next(ErrorHandler(401, "Unauthorized"));
   }

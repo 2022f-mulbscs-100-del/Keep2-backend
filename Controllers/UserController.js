@@ -29,6 +29,7 @@ export const updateProfile = async (req, res, next) => {
     isTwoFaEnabled,
     autoLogoutEnabled,
     autoLogoutTime,
+    MfaEnabled,
   } = profileData;
   logger.info("getting data", name, profileImage);
   const userData = req.user;
@@ -48,6 +49,10 @@ export const updateProfile = async (req, res, next) => {
     }
     if (autoLogoutTime !== undefined) {
       user.autoLogoutTime = autoLogoutTime;
+    }
+    if (MfaEnabled !== undefined) {
+      user.MfaEnabled = MfaEnabled;
+      user.MfaSeceret = null;
     }
     await user.save();
     //eslint-disable-next-line
