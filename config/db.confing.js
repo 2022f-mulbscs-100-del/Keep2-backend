@@ -1,5 +1,11 @@
-import { Sequelize } from "sequelize";
+import dotenv from "dotenv";
 import fs from "fs";
+import { Sequelize } from "sequelize";
+
+// Only load .env in development
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
 
 // Path to CA certificate (only exists locally)
 const localCAPath = "/home/dev/Downloads/ca.pem";
@@ -28,30 +34,35 @@ const sslConfig = isLocal
           },
     };
 
+// MySQL database connection
 const sequelize = new Sequelize(
-  process.env.DATABASE,
-  process.env.USER,
-  process.env.PASSWORD,
+  process.env.DATABASE, // defaultdb
+  process.env.USER_NAME, // ✅ Fixed: USER not USER_NAME
+  process.env.PASSWORD, // your password
   {
-    host: process.env.HOST,
-    port: process.env.SERVER_PORT,
+    host: process.env.HOST, // keeper-sql-mul-6b79.l.aivencloud.com
+    port: process.env.SERVER_PORT, // 26407
     dialect: "mysql",
-    dialectOptions: sslConfig,
+    dialectOptions: sslConfig, // ✅ Fixed: uses dynamic SSL config
     pool: {
       max: 5,
       min: 0,
       acquire: 30000,
       idle: 10000,
     },
-    logging: false,
+    logging: false, // Optional: disable SQL query logging
   }
 );
 
+// Authenticate and sync database
 async function authenticateDB() {
   try {
     await sequelize.authenticate();
-    console.log("✅ MySQL Database connection established successfully.");
+    console.log("✅ Database connection has been established successfully.");
     console.log(`📍 Running in: ${isLocal ? "LOCAL" : "PRODUCTION"} mode`);
+
+    await sequelize.sync();
+    console.log("✅ Database schema synchronized (Tables created/updated).");
   } catch (error) {
     console.error("❌ Unable to connect to the database:", error.message);
     console.error("🔍 Configuration check:", {
@@ -67,4 +78,8 @@ async function authenticateDB() {
 
 authenticateDB();
 
-export default { sequelize };
+// Export sequelize instance
+export default sequelize;
+
+// Also export as named export if needed elsewhere
+export { sequelize, authenticateDB };
