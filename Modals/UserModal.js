@@ -81,6 +81,19 @@ const User = sequelize.define(
       allowNull: true,
       defaultValue: null,
     },
+    subscriptionStatus: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "inactive",
+    },
+    subscriptionPlan: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    subscriptionExpiry: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     timestamps: true,

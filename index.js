@@ -12,8 +12,13 @@ import UserRoute from "./Routes/UserRoute.js";
 import paymentRoute from "./Routes/paymentRoute.js";
 import sendEmail from "./Routes/EmailRoute.js";
 import verifyTurnstileToken from "./Routes/TurnstileRoute.js";
+import { webhookHandler } from "./Controllers/PaymentController.js";
 const app = express();
-
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  webhookHandler
+);
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -32,6 +37,7 @@ app.use("/api", paymentRoute);
 app.use("/api", sendEmail);
 app.get("/refresh", Refresh);
 app.use("/api", verifyTurnstileToken);
+// console.log("SSL Configuration:", process.env.DB_USER);
 
 //eslint-disable-next-line
 app.use((err, req, res, next) => {

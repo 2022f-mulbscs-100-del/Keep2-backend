@@ -6,7 +6,6 @@ import { logger } from "../utils/Logger.js";
 
 export default async function Refresh(req, res, next) {
   const refreshToken = req.cookies.refreshToken;
-  console.log("Received refresh token:", refreshToken);
   logger.info("Received refresh token for refresh endpoint", { refreshToken });
   if (!refreshToken) {
     return next(ErrorHandler(401, "Unauthorized"));
@@ -15,6 +14,7 @@ export default async function Refresh(req, res, next) {
     const payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
 
     const rest = await User.findByPk(payload.id);
+    logger.info("User fetched for refresh token", { userId: payload.id });
     if (!rest) return next(ErrorHandler(404, "User not found"));
 
     const newAccessToken = AccessToken(rest);
