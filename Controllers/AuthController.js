@@ -657,6 +657,9 @@ export const LoginVerifyMFA = async (req, res, next) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
+    logger.info("checking environment for cookie settings", {
+      nodeEnv: process.env.NODE_ENV,
+    });
     logger.info("LoginVerifyMFA successful for email: ", { email });
     res.status(200).json({
       rest,

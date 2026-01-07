@@ -14,6 +14,7 @@ import sendEmail from "./Routes/EmailRoute.js";
 import verifyTurnstileToken from "./Routes/TurnstileRoute.js";
 import { webhookHandler } from "./Controllers/PaymentController.js";
 const app = express();
+console.log("Environment:", process.env.NODE_ENV);
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
