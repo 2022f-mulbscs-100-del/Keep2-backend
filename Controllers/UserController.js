@@ -3,7 +3,9 @@ import { ErrorHandler } from "../utils/ErrorHandler.js";
 import bcrypt from "bcrypt";
 // import { RefreshToken } from "../utils/GenerateRefreshToken.js";
 import { logger } from "../utils/Logger.js";
+import Stripe from "stripe";
 
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 export const userProfile = async (req, res, next) => {
   const userData = req.user;
   const { id } = userData;
@@ -85,7 +87,7 @@ export const DeleteProfile = async (req, res, next) => {
     if (!isPasswordCorrect) {
       return next(ErrorHandler(400, "Invalid Password"));
     }
-
+    await stripe.customers.del(user.stripeCustomerId);
     await User.destroy({ where: { id: userData.id } });
     res.status(200).json({ message: "User profile deleted successfully" });
   } catch (error) {

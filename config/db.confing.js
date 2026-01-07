@@ -35,7 +35,7 @@ const sslConfig = isLocal
 // MySQL database connection
 const sequelize = new Sequelize(
   process.env.DATABASE,
-  process.env.DB_USER, // ✅ Using USER_NAME
+  process.env.DB_USER,
   process.env.PASSWORD,
   {
     host: process.env.HOST,
