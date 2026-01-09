@@ -1,30 +1,45 @@
 import User from "../Modals/UserModal.js";
 import { ErrorHandler } from "../utils/ErrorHandler.js";
 import bcrypt from "bcrypt";
-// import { RefreshToken } from "../utils/GenerateRefreshToken.js";
 import { logger } from "../utils/Logger.js";
 import Stripe from "stripe";
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
 export const userProfile = async (req, res, next) => {
+  logger.info("User profile called in UserController");
+
   const userData = req.user;
+  logger.info("User data from token:", { userData: userData });
+
   const { id } = userData;
+  logger.info("params from the user profile request", { id: id });
+
   try {
     const user = await User.findByPk(id);
     if (!user) {
-      next(ErrorHandler(404, "user not exists"));
+      logger.error("user not exists", { userId: id });
+      return next(ErrorHandler(404, "user not exists"));
     }
 
     //eslint-disable-next-line
     const { password, ...rest } = user.dataValues;
     res.status(200).json(rest);
+    logger.info("User profile fetched successfully", { userProfile: rest });
   } catch (error) {
+    logger.error("Error fetching user profile", {
+      userId: id,
+      error: error.message,
+    });
     next(error);
   }
 };
 
 export const updateProfile = async (req, res, next) => {
+  logger.info("Update profile called in UserController");
+
   const { profileData } = req.body;
+
   const {
     name,
     profileImage,
@@ -32,64 +47,105 @@ export const updateProfile = async (req, res, next) => {
     autoLogoutEnabled,
     autoLogoutTime,
     MfaEnabled,
-  } = profileData;
-  logger.info("getting data", name, profileImage);
+  } = profileData || {};
+  logger.info("params from request body:", { profileData: profileData });
+
   const userData = req.user;
-  logger.info(userData);
+
+  logger.info("User data from token:", { userData: userData });
 
   try {
     const user = await User.findByPk(userData.id);
     if (!user) {
+      logger.error("user not found", { userId: userData.id });
       return next(ErrorHandler(404, "not found"));
     }
-    await user.update({ name, profileImage });
+    if (name || profileImage) {
+      if (name !== undefined) {
+        user.name = name;
+        logger.info("Name updated", { name: name });
+      }
+      if (profileImage !== undefined) {
+        user.profileImage = profileImage;
+        logger.info("Profile image updated", { profileImage: profileImage });
+      }
+    }
     if (isTwoFaEnabled !== undefined) {
       user.isTwoFaEnabled = isTwoFaEnabled;
+      logger.info("Two FA status updated", { isTwoFaEnabled: isTwoFaEnabled });
     }
     if (autoLogoutEnabled !== undefined) {
       user.autoLogoutEnabled = autoLogoutEnabled;
+      logger.info("Auto logout status updated", {
+        autoLogoutEnabled: autoLogoutEnabled,
+      });
     }
     if (autoLogoutTime !== undefined) {
       user.autoLogoutTime = autoLogoutTime;
+      logger.info("Auto logout time updated", {
+        autoLogoutTime: autoLogoutTime,
+      });
     }
     if (MfaEnabled !== undefined) {
       user.MfaEnabled = MfaEnabled;
       user.MfaSeceret = null;
+      logger.info("MFA status updated", { MfaEnabled: MfaEnabled });
     }
     await user.save();
     //eslint-disable-next-line
     const { password, ...rest } = user.dataValues;
-    logger.info("updated data", rest);
     res.status(200).json(rest);
+    logger.info("User profile updated successfully", { rest: rest });
   } catch (error) {
+    logger.error("Error updating user profile", {
+      userId: userData.id,
+      error: error.message,
+    });
     next(error);
   }
 };
 
 export const DeleteProfile = async (req, res, next) => {
+  logger.info("Delete profile called in UserController");
   const userData = req.user;
+  logger.info("User data from token:", { userData: userData });
   const { password } = req.body;
+  logger.info("params from request body:", { password: "****" });
   logger.info(userData);
   try {
     const user = await User.findByPk(userData.id);
     if (!user) {
+      logger.error("user not found", { userId: userData.id });
       return next(ErrorHandler(404, "user not found"));
     }
 
     if (!password) {
+      logger.error("Password is required to delete profile", {
+        userId: userData.id,
+      });
       return next(ErrorHandler(400, "Password is required"));
     }
+
     const isPasswordCorrect = await bcrypt.compare(
       password,
       user.dataValues.password
     );
 
     if (!isPasswordCorrect) {
+      logger.error("Invalid password provided for profile deletion", {
+        userId: userData.id,
+      });
       return next(ErrorHandler(400, "Invalid Password"));
     }
+
+    logger.info("Deleting user profile from Stripe and database", {
+      userId: userData.id,
+      stripeCustomerId: user.stripeCustomerId,
+    });
     await stripe.customers.del(user.stripeCustomerId);
     await User.destroy({ where: { id: userData.id } });
     res.status(200).json({ message: "User profile deleted successfully" });
+    logger.info("User profile deleted successfully", { userId: userData.id });
   } catch (error) {
     next(error);
   }
