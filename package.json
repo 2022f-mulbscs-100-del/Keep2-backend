@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-     "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') import('husky').then(h => h.install())\""
+"prepare": "husky install"
   },
   "author": "",
   "license": "ISC",
