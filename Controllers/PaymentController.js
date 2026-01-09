@@ -2,6 +2,8 @@ import Stripe from "stripe";
 import { logger } from "../utils/Logger.js";
 import User from "../Modals/UserModal.js";
 import { ErrorHandler } from "../utils/ErrorHandler.js";
+// import { NormalizeDate } from "../utils/NormalizeDate.js";
+import { CalculateProration } from "../utils/CalculateProration.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const SubscriptionPaymentIntent = async (req, res, next) => {
@@ -128,7 +130,7 @@ export const webhookHandler = async (req, res, next) => {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (error) {
     logger.error(`Webhook signature verification failed: ${error.message}`);
-    return res.status(400).send(`Webhook Error: ${error.message}`); // ✅ RETURN HERE!
+    return res.status(400).send(`Webhook Error: ${error.message}`);
   }
 
   try {
@@ -137,32 +139,78 @@ export const webhookHandler = async (req, res, next) => {
       const paymentIntent = event.data.object;
       const userId = paymentIntent.metadata.userId;
       const plan = paymentIntent.metadata.plan;
+      const paymentId = paymentIntent.id;
 
       const user = await User.findByPk(userId);
+      const now = new Date();
       if (!user) {
         logger.error("User not found for id from webhook:", userId);
         return res.status(404).json({ message: "User not found" });
       }
+
+      if (paymentIntent.metadata.type === "upgrade_subscription") {
+        logger.info(
+          "Processing upgrade subscription for user id from webhook:",
+          { paymentIntent }
+        );
+
+        const currentDate = new Date();
+        const nextBillingDate = new Date(
+          currentDate.setFullYear(currentDate.getFullYear() + 1)
+        );
+        user.subscriptionExpiry = nextBillingDate.toISOString();
+        user.subscriptionStartDate = now.toISOString();
+        user.subscriptionPlan = "yearly";
+        await user.save();
+        res.json({ received: true });
+        return;
+      }
+
       if (plan === "monthly") {
+        const now = new Date();
         const currentDate = new Date();
         const nextBillingDate = new Date(
           currentDate.setMonth(currentDate.getMonth() + 1)
         );
-        user.subscriptionExpiry = nextBillingDate.toISOString();
+        user.subscriptionExpiry = nextBillingDate.toISOString(); //2026-01-09T11:06:35.063Z --ISOStRING
+        user.subscriptionStartDate = now.toISOString();
       } else if (plan === "yearly") {
         const currentDate = new Date();
         const nextBillingDate = new Date(
-          currentDate.setMonth(currentDate.getFullYear() + 1)
+          currentDate.setFullYear(currentDate.getFullYear() + 1)
         );
         user.subscriptionExpiry = nextBillingDate.toISOString();
+        user.subscriptionStartDate = now.toISOString();
       }
+
+      const paymentIntentDetails =
+        await stripe.paymentIntents.retrieve(paymentId);
+      logger.info("Payment intent details retrieved for webhook processing:", {
+        paymentIntentDetails: paymentIntentDetails,
+      });
+
+      const paymentMethodId = paymentIntentDetails.payment_method;
+      logger.info("Attaching payment method for user id from webhook:", {
+        paymentMethodId: paymentMethodId,
+      });
+      await stripe.paymentMethods.attach(paymentMethodId, {
+        customer: user.stripeCustomerId,
+      });
+      logger.info("Updating default payment method for user id from webhook:", {
+        paymentMethodId: paymentMethodId,
+      });
+      await stripe.customers.update(user.stripeCustomerId, {
+        invoice_settings: {
+          default_payment_method: paymentMethodId,
+        },
+      });
+      logger.info("updating db for user id from webhook:", { userId });
       user.subscriptionStatus = "active";
       user.subscriptionPlan = plan;
       await user.save();
-      logger.info(
-        "User subscription updated for user id from webhook:",
-        userId
-      );
+      logger.info("User subscription updated for user id from webhook:", {
+        userId,
+      });
     }
 
     res.json({ received: true });
@@ -236,6 +284,97 @@ export const UpdatePaymentMethod = async (req, res, next) => {
     res
       .status(200)
       .json({ message: "Payment method updated successfully", paymentMethod });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const UpgradeSubscription = async (req, res, next) => {
+  const { id } = req.user;
+
+  try {
+    const user = await User.findByPk(id);
+    if (!user) {
+      logger.error("user not found with user id", { user: user.id });
+      return next(404, "User not found");
+    }
+
+    if (user.subscriptionStatus !== "active") {
+      return next(404, "User have no currently active subscription");
+    }
+
+    // const normalizeDateBillingDate = NormalizeDate(user.subscriptionStartDate)
+    // if (!normalizeDateBillingDate) {
+    //   logger.error("invalid start date", { normalizeDateBillingDate })
+    //   return next(404, "invalid start date")
+    // }
+    const discountAmount = CalculateProration(
+      user.subscriptionStartDate,
+      user.subscriptionPlan
+    );
+    const amountToBePaid = 100 - discountAmount;
+    const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+    const defaultPaymentMethod =
+      customer.invoice_settings.default_payment_method;
+    if (!defaultPaymentMethod) {
+      logger.error("No default payment method found for user id", {
+        user: user.id,
+      });
+      return next(404, "No default payment method found");
+    }
+    try {
+      await stripe.paymentIntents.create(
+        {
+          amount: Math.round(amountToBePaid * 100),
+          customer: user.stripeCustomerId,
+          currency: "usd",
+          confirm: true,
+          off_session: true,
+          payment_method: defaultPaymentMethod,
+          metadata: {
+            userId: id,
+            type: "upgrade_subscription",
+          },
+        },
+        {
+          idempotencyKey: `upgrade_${id}_${user.subscriptionStartDate}`,
+        }
+      );
+    } catch (error) {
+      if (error.code === "authentication_required") {
+        return res.status(402).json({
+          message: "Authentication required",
+          action: "reauthenticate",
+        });
+      }
+      throw error;
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Subscription upgraded successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const CancelSubscription = async (req, res, next) => {
+  const { id } = req.user;
+  logger.info("CancelSubscription called for user id:", id);
+  try {
+    const user = await User.findByPk(id);
+    if (!user) {
+      logger.error("User not found for id:", id);
+      return next(404, "User not found");
+    }
+
+    user.subscriptionStatus = "inactive";
+    user.subscriptionPlan = null;
+    user.subscriptionExpiry = null;
+    await user.save();
+
+    logger.info("Subscription canceled for user id:", id);
+    res.status(200).json({ message: "Subscription canceled successfully" });
   } catch (error) {
     next(error);
   }
