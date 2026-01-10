@@ -26,6 +26,16 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       defaultValue: undefined,
     },
+    phoneNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    secondaryEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
     resetPasswordExpiry: {
       type: DataTypes.DATE,
       defaultValue: undefined,

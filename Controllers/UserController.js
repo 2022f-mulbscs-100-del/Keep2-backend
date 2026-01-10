@@ -47,6 +47,8 @@ export const updateProfile = async (req, res, next) => {
     autoLogoutEnabled,
     autoLogoutTime,
     MfaEnabled,
+    phoneNumber,
+    secondaryEmail,
   } = profileData || {};
   logger.info("params from request body:", { profileData: profileData });
 
@@ -90,6 +92,16 @@ export const updateProfile = async (req, res, next) => {
       user.MfaEnabled = MfaEnabled;
       user.MfaSeceret = null;
       logger.info("MFA status updated", { MfaEnabled: MfaEnabled });
+    }
+    if (phoneNumber !== undefined) {
+      user.phoneNumber = phoneNumber;
+      logger.info("Phone number updated", { phoneNumber: phoneNumber });
+    }
+    if (secondaryEmail !== undefined) {
+      user.secondaryEmail = secondaryEmail;
+      logger.info("Secondary email updated", {
+        secondaryEmail: secondaryEmail,
+      });
     }
     await user.save();
     //eslint-disable-next-line
@@ -181,6 +193,81 @@ export const DeleteProfile = async (req, res, next) => {
 //     res.status(200).json({ message: "Auto logout time updated successfully" });
 //   } catch (error) {
 //     logger.error("AutoLogout: error updating auto logout time", { userId: userData.id, error: error.message });
+//     next(error);
+//   }
+// };
+
+// export const updateProfile = async (req, res, next) => {
+//   logger.info("Update profile called", { userId: req.user.id });
+
+//   const { profileData } = req.body;
+//   const {
+//     name,
+//     profileImage,
+//     isTwoFaEnabled,
+//     autoLogoutEnabled,
+//     autoLogoutTime,
+//     MfaEnabled,
+//     phoneNumber,
+//     secondaryEmail,
+//   } = profileData || {};
+
+//   try {
+//     const user = await User.findByPk(req.user.id);
+
+//     if (!user) {
+//       logger.error("User not found", { userId: req.user.id });
+//       return next(ErrorHandler(404, "User not found"));
+//     }
+
+//     // Use transaction for atomic updates
+//     await sequelize.transaction(async (t) => {
+//       // Define allowed fields and their values
+//       const updates = {
+//         name,
+//         profileImage,
+//         isTwoFaEnabled,
+//         autoLogoutEnabled,
+//         autoLogoutTime,
+//         MfaEnabled,
+//         phoneNumber,
+//         secondaryEmail,
+//       };
+
+//       // Filter out undefined values and apply updates
+//       Object.keys(updates).forEach((key) => {
+//         if (updates[key] !== undefined) {
+//           user[key] = updates[key];
+//         }
+//       });
+
+//       // Special handling for MFA
+//       if (MfaEnabled !== undefined && !MfaEnabled) {
+//         user.MfaSeceret = null; // Fix typo: should be MfaSecret
+//       }
+
+//       await user.save({ transaction: t });
+//     });
+
+//     // Return updated user without password
+//     const { password, ...userProfile } = user.dataValues;
+
+//     logger.info("Profile updated successfully", {
+//       userId: req.user.id,
+//       updatedFields: Object.keys(profileData || {})
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       data: userProfile
+//     });
+
+//   } catch (error) {
+//     logger.error("Error updating profile", {
+//       userId: req.user.id,
+//       error: error.message,
+//       stack: error.stack
+//     });
 //     next(error);
 //   }
 // };
