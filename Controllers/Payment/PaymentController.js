@@ -1,9 +1,9 @@
 import Stripe from "stripe";
-import { logger } from "../utils/Logger.js";
-import User from "../Modals/UserModal.js";
-import { ErrorHandler } from "../utils/ErrorHandler.js";
+import { logger } from "../../utils/Logger.js";
+import User from "../../Modals/UserModal.js";
+import { ErrorHandler } from "../../utils/ErrorHandler.js";
 // import { NormalizeDate } from "../utils/NormalizeDate.js";
-import { CalculateProration } from "../utils/CalculateProration.js";
+import { CalculateProration } from "../../utils/CalculateProration.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const SubscriptionPaymentIntent = async (req, res, next) => {

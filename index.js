@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import { authenticateDB } from "./config/db.confing.js";
 import cors from "cors";
 import Sandboxroute from "./Routes/Sandbox.js";
-import Refresh from "./Controllers/RefreshController.js";
+import Refresh from "./Controllers/Refresh/RefreshController.js";
 dotenv.config();
 import AuthRoute from "./Routes/AuthRoute.js";
 import cookieParser from "cookie-parser";
@@ -12,7 +12,10 @@ import UserRoute from "./Routes/UserRoute.js";
 import paymentRoute from "./Routes/paymentRoute.js";
 import sendEmail from "./Routes/EmailRoute.js";
 import verifyTurnstileToken from "./Routes/TurnstileRoute.js";
-import { webhookHandler } from "./Controllers/PaymentController.js";
+import { webhookHandler } from "./Controllers/Payment/PaymentController.js";
+import { startCleanUpCron } from "./cron/cleanup.cron.js";
+import { swaggerUi, swaggerSpec } from "./config/swagger.js";
+import "./Modals/associations.js";
 const app = express();
 console.log("Environment:", process.env.NODE_ENV);
 app.post(
@@ -38,7 +41,7 @@ app.use("/api", paymentRoute);
 app.use("/api", sendEmail);
 app.get("/refresh", Refresh);
 app.use("/api", verifyTurnstileToken);
-// console.log("SSL Configuration:", process.env.DB_USER);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 //eslint-disable-next-line
 app.use((err, req, res, next) => {
@@ -47,6 +50,7 @@ app.use((err, req, res, next) => {
     message: err.message,
   });
 });
+startCleanUpCron();
 authenticateDB();
 app.listen(process.env.SERVER_PORT, () => {
   console.log(`Server is running on port ${process.env.SERVER_PORT}`);

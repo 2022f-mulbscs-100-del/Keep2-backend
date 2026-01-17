@@ -1,0 +1,76 @@
+import bcrypt from "bcrypt";
+import { ErrorHandler } from "../../utils/ErrorHandler.js";
+import { checkExpiration } from "../../utils/CheckExpiration.js";
+import { logger } from "../../utils/Logger.js";
+import User from "../../Modals/UserModal.js";
+import Auth from "../../Modals/AuthModal.js";
+
+export const resetPassword = async (req, res, next) => {
+  const {
+    email,
+    password: preHashPassword,
+    code,
+    resetThroughToken,
+    currentPassword,
+  } = req.body;
+  logger.info("resetPassword called with: ", { email, resetThroughToken });
+  if (resetThroughToken) {
+    if (!code) {
+      logger.warn("resetPassword failed: token is missing for email: ", email);
+      return next(ErrorHandler(400, "token is missing"));
+    }
+  }
+
+  try {
+    const checkUser = await User.findOne({
+      where: { email },
+      include: [{ model: Auth, as: "auth" }],
+    });
+    if (!checkUser) {
+      logger.warn("resetPassword failed: User not found for email: ", email);
+      return next(ErrorHandler(400, "User not found"));
+    }
+    const auth = checkUser.auth;
+    if (resetThroughToken) {
+      if (auth.resetPasswordToken !== code) {
+        logger.warn("resetPassword failed: Invalid token for email: ", email);
+        return next(ErrorHandler(400, "Invalid token"));
+      }
+      if (!checkExpiration(auth.resetPasswordExpiry)) {
+        logger.warn("resetPassword token expired for email: ", email);
+        return next(ErrorHandler(400, "Token expired"));
+      }
+    }
+
+    if (!resetThroughToken) {
+      const isPasswordCorrect = await bcrypt.compare(
+        currentPassword,
+        auth.dataValues.password
+      );
+
+      if (!isPasswordCorrect) {
+        logger.warn(
+          "resetPassword failed: Invalid current password for email: ",
+          email
+        );
+        return next(ErrorHandler(400, "Invalid Current Password"));
+      }
+      logger.info("resetPassword current password verified for email: ", email);
+    }
+    const hashPassword = await bcrypt.hash(preHashPassword, 10);
+    await Auth.update(
+      { password: hashPassword },
+      { where: { userId: auth.userId } }
+    );
+    logger.info("resetPassword successfully updated for email: ", email);
+    res.status(200).json("Password Updated");
+  } catch (error) {
+    logger.error(
+      "resetPassword error for email: ",
+      email,
+      " - ",
+      error.message
+    );
+    return next(error);
+  }
+};

@@ -16,21 +16,17 @@ const isLocal = fs.existsSync(localCAPath);
 // Configure SSL based on environment
 const sslConfig = isLocal
   ? {
-      ssl: {
-        ca: fs.readFileSync(localCAPath),
-        rejectUnauthorized: true,
-      },
+      ca: fs.readFileSync(localCAPath),
+      rejectUnauthorized: true,
     }
-  : {
-      ssl: process.env.CA_CERT
-        ? {
-            ca: process.env.CA_CERT,
-            rejectUnauthorized: true,
-          }
-        : {
-            rejectUnauthorized: false,
-          },
-    };
+  : process.env.CA_CERT
+    ? {
+        ca: process.env.CA_CERT,
+        rejectUnauthorized: true,
+      }
+    : {
+        rejectUnauthorized: false,
+      };
 
 // MySQL database connection
 const sequelize = new Sequelize(
@@ -41,7 +37,9 @@ const sequelize = new Sequelize(
     host: process.env.HOST,
     port: process.env.DB_PORT,
     dialect: "mysql",
-    dialectOptions: sslConfig,
+    dialectOptions: {
+      ssl: sslConfig,
+    },
     pool: {
       max: 5,
       min: 0,
@@ -65,9 +63,9 @@ async function authenticateDB() {
     console.error("❌ Unable to connect to the database:", error.message);
     console.error("🔍 Configuration check:", {
       database: process.env.DATABASE,
-      user: process.env.USER_NAME, // ✅ Changed to USER_NAME to match
+      user: process.env.DB_USER,
       host: process.env.HOST,
-      port: process.env.SERVER_PORT,
+      port: process.env.DB_PORT,
       hasPassword: !!process.env.PASSWORD,
       environment: isLocal ? "local" : "production",
     });

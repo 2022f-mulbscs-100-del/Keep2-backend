@@ -6,7 +6,7 @@ import {
   CancelSubscription,
   UpgradeSubscription,
   //   DowngradeSubscription
-} from "../Controllers/PaymentController.js";
+} from "../Controllers/Payment/PaymentController.js";
 import { VerifyToken } from "../utils/VerifyToken.js";
 
 const route = express.Router();

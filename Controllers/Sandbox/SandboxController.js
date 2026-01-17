@@ -1,8 +1,9 @@
-import Notes from "../Modals/notes.js";
+import Notes from "../../Modals/notes.js";
 import { faker } from "@faker-js/faker";
-import { ErrorHandler } from "../utils/ErrorHandler.js";
+import { ErrorHandler } from "../../utils/ErrorHandler.js";
 
 export const generateSandbox = async (req, res, next) => {
+  const { id: userId } = req.user;
   const { numNotes, useRandomData } = req.body;
   if (numNotes <= 0 || numNotes > 100) {
     next(ErrorHandler(400, "numNotes must be between 1 and 100"));
@@ -24,6 +25,7 @@ export const generateSandbox = async (req, res, next) => {
             continue;
           }
           const newNotes = await Notes.create({
+            userId: userId,
             title: hasTitle ? faker.internet.username() : "",
             description: hasDescription ? faker.lorem.paragraph() : "",
             pinned:
@@ -44,8 +46,9 @@ export const generateSandbox = async (req, res, next) => {
 };
 
 export const deleteSandbox = async (req, res, next) => {
+  const { id: userId } = req.user;
   try {
-    Notes.destroy({ where: {}, truncate: true });
+    Notes.destroy({ where: { userId }, truncate: true });
     res.status(200).json({ message: "Deleted  Notes Successfully" });
   } catch (error) {
     next(error);

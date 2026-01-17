@@ -1,27 +1,18 @@
-// import mongoose from "mongoose";
-
-// const notesSchema = new mongoose.Schema(
-//   {
-//     title: {
-//       type: String,
-//     },
-//     description: {
-//       type: String,
-//     },
-//   },
-//   { timestamps: true }
-// );
-
-// const Notes = mongoose.model("Notes", notesSchema);
-
-// export default Notes;
-
 import { sequelize } from "../config/db.confing.js";
 import { DataTypes } from "sequelize";
 
 const Notes = sequelize.define(
   "Notes",
   {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    userId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     title: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -44,8 +35,9 @@ const Notes = sequelize.define(
       defaultValue: false,
     },
     image: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.JSON, // MySQL supports JSON
       allowNull: true,
+      defaultValue: [], // optional
     },
   },
   {
