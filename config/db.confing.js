@@ -68,7 +68,7 @@ async function authenticateDB() {
     logger.error("Unable to connect to the database", {
       error: error.message,
       database: process.env.DATABASE,
-      user: process.env.USER_NAME, // ✅ Changed to USER_NAME to match
+      user: process.env.USER_NAME,
       host: process.env.HOST,
       port: process.env.DB_PORT,
       environment: isLocal ? "local" : "production",

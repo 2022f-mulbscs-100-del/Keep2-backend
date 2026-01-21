@@ -14,6 +14,9 @@ import paymentRoute from "./Routes/paymentRoute.js";
 import sendEmail from "./Routes/EmailRoute.js";
 import verifyTurnstileToken from "./Routes/TurnstileRoute.js";
 import { webhookHandler } from "./Controllers/PaymentController.js";
+import { startCleanUpCron } from "./cron/cleanup.cron.js";
+import { swaggerUi, swaggerSpec } from "./config/swagger.js";
+import "./Modals/associations.js";
 const app = express();
 logger.info("Application initializing", {
   environment: process.env.NODE_ENV,
@@ -42,7 +45,8 @@ app.use("/api", paymentRoute);
 app.use("/api", sendEmail);
 app.get("/refresh", Refresh);
 app.use("/api", verifyTurnstileToken);
-// console.log("SSL Configuration:", process.env.DB_USER);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+logger.info("Swagger documentation available at /api-docs");
 
 //eslint-disable-next-line
 app.use((err, req, res, next) => {
@@ -57,6 +61,8 @@ app.use((err, req, res, next) => {
     message: err.message,
   });
 });
+
+startCleanUpCron();
 authenticateDB();
 app.listen(process.env.SERVER_PORT, () => {
   logger.info("Server started successfully", {

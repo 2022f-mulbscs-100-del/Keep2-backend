@@ -16,36 +16,15 @@ const User = sequelize.define(
       allowNull: false,
       unique: true,
     },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     profileImage: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: "",
     },
-    resetPasswordToken: {
-      type: DataTypes.STRING,
-      defaultValue: undefined,
-    },
-    resetPasswordExpiry: {
-      type: DataTypes.DATE,
-      defaultValue: undefined,
-    },
     isTwoFaEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-    },
-    isTwoFaVerifiedExpiration: {
-      type: DataTypes.DATE,
-      defaultValue: undefined,
-    },
-    twoFaSecret: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      defaultValue: null,
     },
     autoLogoutEnabled: {
       type: DataTypes.BOOLEAN,
@@ -67,27 +46,10 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
-    MfaSeceret: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      defaultValue: null,
-    },
     subscriptionStatus: {
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "inactive",
-    },
-    subscriptionPlan: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    subscriptionExpiry: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    subscriptionStartDate: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
   },
   {

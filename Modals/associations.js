@@ -90,3 +90,4 @@ LabelCategories.belongsTo(Notes, {
 // mean making the userid foreign key in remainder table?
 // first piece of code tell that user have multiple reminder notes and in remainder table the user id is the foreing key and if user delete all the reminder notes willl be deleted right?
 // and in second piece of code we tell that reminder belongs to the user mean each reminder have one user and that user iwill be find by user id ?
+logger.info("All database model associations setup completed successfully");

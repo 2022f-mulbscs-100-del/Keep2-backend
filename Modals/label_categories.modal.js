@@ -28,6 +28,14 @@ const LabelCategories = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    noteId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Notes",
+        key: "id",
+      },
+    },
   },
   {
     timestamps: true,
