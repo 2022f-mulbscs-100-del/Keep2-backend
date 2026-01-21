@@ -1,6 +1,6 @@
 import axios from "axios";
-import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import { logger } from "../../utils/Logger.js";
+import { logger } from "../utils/Logger.js";
+import { ErrorHandler } from "../utils/ErrorHandler.js";
 
 export const verifyTurnstileToken = async (req, res, next) => {
   const { token } = req.body;

@@ -1,7 +1,7 @@
-import Notes from "../../Modals/notes.modal.js";
 import { faker } from "@faker-js/faker";
-import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import { logger } from "../../utils/Logger.js";
+import { logger } from "../utils/Logger.js";
+import Notes from "../Modals/notes.modal.js";
+import { ErrorHandler } from "../utils/ErrorHandler.js";
 
 export const generateSandbox = async (req, res, next) => {
   const { id: userId } = req.user;

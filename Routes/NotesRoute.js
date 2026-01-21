@@ -1,5 +1,5 @@
 import express from "express";
-import * as NotesController from "../Controllers/NotesController.js";
+import * as NotesController from "../Controllers/Notes/NotesController.js";
 import { VerifyToken } from "../utils/VerifyToken.js";
 import { logger } from "../utils/Logger.js";
 
