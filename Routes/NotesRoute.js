@@ -1,15 +1,5 @@
 import express from "express";
-import {
-  addNotes,
-  deleteNotes,
-  deleteNotesById,
-  getDeletedNotes,
-  getNotes,
-  getNotesById,
-  pinnedNotes,
-  updateNotes,
-  getArchivedNotes,
-} from "../Controllers/NotesController.js";
+import * as NotesController from "../Controllers/Notes/NotesController.js";
 import { VerifyToken } from "../utils/VerifyToken.js";
 
 const route = express.Router();

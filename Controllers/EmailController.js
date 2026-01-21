@@ -1,5 +1,7 @@
 import axios from "axios";
 import { ErrorHandler } from "../utils/ErrorHandler.js";
+import { logger } from "../utils/Logger.js";
+import { BrevoValidation } from "../validation/BrevoValidation.js";
 
 export const EmailController = async (req, res, next) => {
   const { email, name, templateId, params } = req.body;
