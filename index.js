@@ -3,6 +3,7 @@ import route from "./Routes/NotesRoute.js";
 import dotenv from "dotenv";
 import { authenticateDB } from "./config/db.confing.js";
 import cors from "cors";
+import { logger } from "./utils/Logger.js";
 import Sandboxroute from "./Routes/Sandbox.js";
 import Refresh from "./Controllers/RefreshController.js";
 dotenv.config();
@@ -14,7 +15,10 @@ import sendEmail from "./Routes/EmailRoute.js";
 import verifyTurnstileToken from "./Routes/TurnstileRoute.js";
 import { webhookHandler } from "./Controllers/PaymentController.js";
 const app = express();
-console.log("Environment:", process.env.NODE_ENV);
+logger.info("Application initializing", {
+  environment: process.env.NODE_ENV,
+  port: process.env.SERVER_PORT,
+});
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
@@ -42,6 +46,12 @@ app.use("/api", verifyTurnstileToken);
 
 //eslint-disable-next-line
 app.use((err, req, res, next) => {
+  logger.error("Request error", {
+    statusCode: err.statusCode || 500,
+    message: err.message,
+    path: req.path,
+    method: req.method,
+  });
   return res.status(err.statusCode || 500).json({
     success: false,
     message: err.message,
@@ -49,7 +59,10 @@ app.use((err, req, res, next) => {
 });
 authenticateDB();
 app.listen(process.env.SERVER_PORT, () => {
-  console.log(`Server is running on port ${process.env.SERVER_PORT}`);
+  logger.info("Server started successfully", {
+    port: process.env.SERVER_PORT,
+    environment: process.env.NODE_ENV,
+  });
 });
 
 // Store all dates in ISO (always UTC)
