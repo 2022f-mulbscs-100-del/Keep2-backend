@@ -24,12 +24,8 @@ export default async function Refresh(req, res, next) {
       .status(200)
       .json({ accessToken: newAccessToken, rest: restWithoutPassword });
   } catch (error) {
-    logger.error("Error in refresh token endpoint", {
-      error: error.message,
-      errorName: error.name,
-    });
+    console.error(error);
     if (error.name === "TokenExpiredError") {
-      logger.warn("Refresh token expired");
       return next(
         ErrorHandler(401, "Refresh token expired. Please login again.")
       );

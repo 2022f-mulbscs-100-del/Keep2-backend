@@ -1,12 +1,10 @@
 import dotenv from "dotenv";
 import fs from "fs";
 import { Sequelize } from "sequelize";
-import { logger } from "../utils/Logger.js";
 
 // Only load .env in development
 if (process.env.NODE_ENV !== "production") {
   dotenv.config();
-  logger.info("Loaded environment variables from .env file");
 }
 
 // Path to CA certificate (only exists locally)
@@ -58,19 +56,19 @@ const sequelize = new Sequelize(
 async function authenticateDB() {
   try {
     await sequelize.authenticate();
-    logger.info("Database connection established successfully", {
-      environment: isLocal ? "LOCAL" : "PRODUCTION",
-    });
+    console.log("✅ Database connection has been established successfully.");
+    console.log(`📍 Running in: ${isLocal ? "LOCAL" : "PRODUCTION"} mode`);
 
-    await sequelize.sync({});
-    logger.info("Database schema synchronized");
+    await sequelize.sync();
+    console.log("✅ Database schema synchronized (Tables created/updated).");
   } catch (error) {
-    logger.error("Unable to connect to the database", {
-      error: error.message,
+    console.error("❌ Unable to connect to the database:", error.message);
+    console.error("🔍 Configuration check:", {
       database: process.env.DATABASE,
       user: process.env.USER_NAME, // ✅ Changed to USER_NAME to match
       host: process.env.HOST,
-      port: process.env.DB_PORT,
+      port: process.env.SERVER_PORT,
+      hasPassword: !!process.env.PASSWORD,
       environment: isLocal ? "local" : "production",
     });
   }
