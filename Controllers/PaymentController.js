@@ -4,6 +4,7 @@ import User from "../Modals/UserModal.js";
 import { ErrorHandler } from "../utils/ErrorHandler.js";
 // import { NormalizeDate } from "../utils/NormalizeDate.js";
 import { CalculateProration } from "../utils/CalculateProration.js";
+import Subscription from "../Modals/SubscriptionModal.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const SubscriptionPaymentIntent = async (req, res, next) => {
@@ -141,7 +142,11 @@ export const webhookHandler = async (req, res, next) => {
       const plan = paymentIntent.metadata.plan;
       const paymentId = paymentIntent.id;
 
-      const user = await User.findByPk(userId);
+      const user = await User.findByPk(userId, {
+        include: [{ model: Subscription, as: "subscription" }],
+      });
+
+      const subscription = user.subscription;
       const now = new Date();
       if (!user) {
         logger.error("User not found for id from webhook:", userId);
@@ -158,10 +163,10 @@ export const webhookHandler = async (req, res, next) => {
         const nextBillingDate = new Date(
           currentDate.setFullYear(currentDate.getFullYear() + 1)
         );
-        user.subscriptionExpiry = nextBillingDate.toISOString();
-        user.subscriptionStartDate = now.toISOString();
-        user.subscriptionPlan = "yearly";
-        await user.save();
+        subscription.subscriptionExpiry = nextBillingDate.toISOString();
+        subscription.subscriptionStartDate = now.toISOString();
+        subscription.subscriptionPlan = "yearly";
+        await subscription.save();
         res.json({ received: true });
         return;
       }
@@ -172,15 +177,15 @@ export const webhookHandler = async (req, res, next) => {
         const nextBillingDate = new Date(
           currentDate.setMonth(currentDate.getMonth() + 1)
         );
-        user.subscriptionExpiry = nextBillingDate.toISOString(); //2026-01-09T11:06:35.063Z --ISOStRING
-        user.subscriptionStartDate = now.toISOString();
+        subscription.subscriptionExpiry = nextBillingDate.toISOString(); //2026-01-09T11:06:35.063Z --ISOStRING
+        subscription.subscriptionStartDate = now.toISOString();
       } else if (plan === "yearly") {
         const currentDate = new Date();
         const nextBillingDate = new Date(
           currentDate.setFullYear(currentDate.getFullYear() + 1)
         );
-        user.subscriptionExpiry = nextBillingDate.toISOString();
-        user.subscriptionStartDate = now.toISOString();
+        subscription.subscriptionExpiry = nextBillingDate.toISOString();
+        subscription.subscriptionStartDate = now.toISOString();
       }
 
       const paymentIntentDetails =
@@ -208,6 +213,7 @@ export const webhookHandler = async (req, res, next) => {
       user.subscriptionStatus = "active";
       user.subscriptionPlan = plan;
       await user.save();
+      await subscription.save();
       logger.info("User subscription updated for user id from webhook:", {
         userId,
       });

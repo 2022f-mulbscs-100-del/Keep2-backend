@@ -3,9 +3,10 @@ import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { checkExpiration } from "../../utils/CheckExpiration.js";
 import { logger } from "../../utils/Logger.js";
 import Auth from "../../Modals/AuthModal.js";
+import { CodeCheck as codeCheckValidation } from "../../validation/authValidation.js";
 
 export const CodeCheck = async (req, res, next) => {
-  const validateData = CodeCheck.parse(req.body);
+  const validateData = codeCheckValidation.parse(req.body);
   const { code, email } = validateData;
   logger.info("CodeCheck called with: ", { email });
   try {
