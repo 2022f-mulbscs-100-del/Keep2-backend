@@ -1,5 +1,8 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/db.confing.js";
+import { logger } from "../utils/Logger.js";
+
+logger.info("UserModal initialized");
 
 const User = sequelize.define(
   "User",
@@ -52,18 +55,6 @@ const User = sequelize.define(
     autoLogoutTime: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      defaultValue: null,
-    },
-    signUpConfirmation: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    signUpConfirmationToken: {
-      type: DataTypes.STRING,
-      defaultValue: null,
-    },
-    signUpConfirmationTokenExpiry: {
-      type: DataTypes.DATE,
       defaultValue: null,
     },
     stripeCustomerId: {

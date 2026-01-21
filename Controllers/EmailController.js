@@ -4,12 +4,13 @@ import { logger } from "../utils/Logger.js";
 import { BrevoValidation } from "../validation/BrevoValidation.js";
 
 export const EmailController = async (req, res, next) => {
-  const { email, name, templateId, params } = req.body;
+  const { email, name, templateId } = BrevoValidation.parse(req.body);
+  const { params } = req.body;
+  logger.info("Email request received", { email, templateId });
 
-  console.log(req.body);
-  console.log(process.env.BREVO_API_KEY);
   try {
     if (!email || !name || !templateId) {
+      logger.warn("Invalid email parameters", { email, name, templateId });
       return next(ErrorHandler(400, "Please provide all required fields"));
     }
     await axios.post(
@@ -32,21 +33,15 @@ export const EmailController = async (req, res, next) => {
       message: "Email sent successfully",
     });
   } catch (error) {
+    if (error.name === "ZodError") {
+      logger.warn("Login validation failed", { errors: error.errors });
+      return next(ErrorHandler(400, error.errors[0].message));
+    }
+    logger.error("Login error", {
+      email: req.body?.email,
+      message: error.message,
+      errorType: error.name,
+    });
     next(error);
   }
 };
-
-// await axios.post(
-//   "https://api.brevo.com/v3/smtp/email",
-//   {
-//     to: [{ email, name }],
-//     templateId,
-//     params
-//   },
-//   {
-//     headers: {
-//       "api-key": process.env.BREVO_API_KEY,
-//       "Content-Type": "application/json",
-//     },
-//   }
-// );
