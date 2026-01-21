@@ -29,8 +29,7 @@
     "speakeasy": "^2.0.0",
     "stripe": "^20.0.0",
     "uuid": "^13.0.0",
-    "winston": "^3.19.0",
-    "zod": "^4.3.5"
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

@@ -1,18 +1,10 @@
-import Notes from "../../Modals/notes.modal.js";
+import Notes from "../Modals/notes.js";
 import { faker } from "@faker-js/faker";
-import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import { logger } from "../../utils/Logger.js";
+import { ErrorHandler } from "../utils/ErrorHandler.js";
 
 export const generateSandbox = async (req, res, next) => {
-  const { id: userId } = req.user;
   const { numNotes, useRandomData } = req.body;
-  logger.info("Sandbox data generation requested", {
-    userId,
-    numNotes,
-    useRandomData,
-  });
   if (numNotes <= 0 || numNotes > 100) {
-    logger.warn("Invalid numNotes value", { numNotes });
     next(ErrorHandler(400, "numNotes must be between 1 and 100"));
     return;
   } else {
@@ -52,10 +44,8 @@ export const generateSandbox = async (req, res, next) => {
 };
 
 export const deleteSandbox = async (req, res, next) => {
-  const { id: userId } = req.user;
-  logger.info("Deleting sandbox notes for user", { userId });
   try {
-    await Notes.destroy({ where: { userId } });
+    Notes.destroy({ where: {}, truncate: true });
     res.status(200).json({ message: "Deleted  Notes Successfully" });
   } catch (error) {
     next(error);

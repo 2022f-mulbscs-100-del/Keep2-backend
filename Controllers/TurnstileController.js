@@ -1,13 +1,10 @@
 import axios from "axios";
-import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import { logger } from "../../utils/Logger.js";
+import { ErrorHandler } from "../utils/ErrorHandler.js";
 
 export const verifyTurnstileToken = async (req, res, next) => {
   const { token } = req.body;
-  logger.info("Turnstile token verification requested");
 
   if (!token) {
-    logger.warn("Turnstile token is missing");
     return next(ErrorHandler(400, "Turnstile token is missing"));
   }
 

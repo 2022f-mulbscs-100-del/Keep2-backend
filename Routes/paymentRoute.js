@@ -8,10 +8,8 @@ import {
   //   DowngradeSubscription
 } from "../Controllers/PaymentController.js";
 import { VerifyToken } from "../utils/VerifyToken.js";
-import { logger } from "../utils/Logger.js";
 
 const route = express.Router();
-logger.info("PaymentRoute initialized");
 
 // route.post("/payment", VerifyToken, PaymentIntent);
 route.post("/create-payment-intent", VerifyToken, SubscriptionPaymentIntent);
