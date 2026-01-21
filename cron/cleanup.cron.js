@@ -20,129 +20,166 @@ const mainScheduler = async () => {
 const SubscriptionScheduler = async () => {
   try {
     logger.info("SubscriptionScheduler started");
-    const user = await User.findAll({
+
+    const users = await User.findAll({
       where: { subscriptionStatus: "active" },
       include: [{ model: Subscription, as: "subscription" }],
     });
 
-    if (user.length === 0) {
+    logger.info(
+      `Fetched ${users.length} active user(s) for subscription processing`
+    );
+
+    if (users.length === 0) {
       logger.info("No users with active subscriptions found");
       return;
     }
 
-    for (const users of user) {
+    for (const user of users) {
       try {
-        const subscription = users.subscription;
+        const subscription = user.subscription;
+        logger.info(`Processing subscription for userId: ${user.id}`, {
+          subscriptionType: subscription?.subscriptionType,
+          subscriptionExpiry: subscription?.subscriptionExpiry,
+        });
+
         const currentDate = new Date();
         const subscriptionEndDate = new Date(subscription.subscriptionExpiry);
 
-        const customer = await stripe.customers.retrieve(
-          users.stripeCustomerId
-        );
+        // Fetch Stripe customer
+        const customer = await stripe.customers.retrieve(user.stripeCustomerId);
         if (!customer) {
-          logger.error("Customer not found in Stripe for userId: ", users.id);
-          users.subscriptionStatus = "inactive";
-          await users.save();
+          logger.error(`Customer not found in Stripe`, { userId: user.id });
+          user.subscriptionStatus = "inactive";
+          await user.save();
           continue;
         }
+        logger.info(`Stripe customer retrieved successfully`, {
+          userId: user.id,
+        });
+
         const default_payment_method =
           customer.invoice_settings.default_payment_method;
         if (!default_payment_method) {
-          logger.error("No default payment method for userId: ", users.id);
-          users.subscriptionStatus = "inactive";
-          await users.save();
+          logger.error(`No default payment method set`, { userId: user.id });
+          user.subscriptionStatus = "inactive";
+          await user.save();
           continue;
         }
-        if (subscription && subscriptionEndDate <= currentDate) {
-          switch (subscription.subscriptionType) {
-            case "monthly":
-              {
-                const newSubscription = await stripe.paymentIntents.create(
-                  {
-                    amount: 1000,
-                    currency: "usd",
-                    customer: users.stripeCustomerId,
-                    payment_method: default_payment_method,
-                    off_session: true,
-                    confirm: true,
-                    metadata: {
-                      userId: users.id,
-                      type: "renew_subscription_monthly",
-                    },
-                  },
-                  {
-                    idempotencyKey: `upgrade_${users.id}_${users.subscriptionStartDate}`,
-                  }
-                );
+        logger.info(`Default payment method found`, { userId: user.id });
 
-                if (newSubscription.status === "succeeded") {
+        if (subscription && subscriptionEndDate <= currentDate) {
+          logger.info(`Subscription expired, attempting renewal`, {
+            userId: user.id,
+            subscriptionType: subscription.subscriptionType,
+            subscriptionEndDate,
+          });
+
+          switch (subscription.subscriptionType) {
+            case "monthly": {
+              const newSubscription = await stripe.paymentIntents.create(
+                {
+                  amount: 1000,
+                  currency: "usd",
+                  customer: user.stripeCustomerId,
+                  payment_method: default_payment_method,
+                  off_session: true,
+                  confirm: true,
+                  metadata: {
+                    userId: user.id,
+                    type: "renew_subscription_monthly",
+                  },
+                },
+                {
+                  idempotencyKey: `upgrade_${user.id}_${subscription.subscriptionStartDate}`,
+                }
+              );
+              logger.info(`Monthly payment intent created`, {
+                userId: user.id,
+                paymentIntentId: newSubscription.id,
+                status: newSubscription.status,
+              });
+
+              if (newSubscription.status === "succeeded") {
+                subscription.subscriptionExpiry.setFullYear(
+                  subscription.subscriptionStartDate().getFullYear() + 1
+                );
+                await subscription.save();
+                logger.info(`Subscription renewed successfully`, {
+                  userId: user.id,
+                });
+              } else {
+                user.subscriptionStatus = "past_due";
+                await user.save();
+                logger.warn(`Monthly payment failed`, { userId: user.id });
+              }
+              break;
+            }
+            case "yearly": {
+              const yearlyPaymentIntent = await stripe.paymentIntents.create(
+                {
+                  amount: 10000,
+                  customer: user.stripeCustomerId,
+                  currency: "usd",
+                  off_session: true,
+                  confirm: true,
+                  payment_method: default_payment_method,
+                  metadata: {
+                    user: user.id,
+                    type: "renew_subscription_yearly",
+                  },
+                },
+                {
+                  idempotencyKey: `upgrade_${user.id}_${subscription.subscriptionStartDate}`,
+                }
+              );
+              logger.info(`Yearly payment intent created`, {
+                userId: user.id,
+                paymentIntentId: yearlyPaymentIntent.id,
+                status: yearlyPaymentIntent.status,
+              });
+
+              if (yearlyPaymentIntent.status === "succeeded") {
+                subscription.subscriptionExpiry = new Date(
                   subscription.subscriptionExpiry.setFullYear(
-                    subscription.subscriptionStartDate().getFullYear() + 1
-                  );
-                  // subscription.subscriptionExpiry = new Date(subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1));
-                  await subscription.save();
-                  logger.info(
-                    "Subscription renewed successfully for userId: ",
-                    users.id
-                  );
-                }
-                if (newSubscription.status !== "succeeded") {
-                  users.subscriptionStatus = "past_due";
-                  await users.save();
-                  logger.warn("Payment failed for userId:", users.id);
-                }
+                    subscription.subscriptionExpiry.getFullYear() + 1
+                  )
+                );
+                await subscription.save();
+                logger.info(`Yearly subscription renewed successfully`, {
+                  userId: user.id,
+                });
+              } else {
+                user.subscriptionStatus = "past_due";
+                await user.save();
+                logger.warn(`Yearly payment failed`, { userId: user.id });
               }
               break;
-            case "yearly":
-              {
-                const YearlySubscriptionPaymentIntent =
-                  await stripe.paymentIntents.create(
-                    {
-                      amount: 10000,
-                      customer: users.stripeCustomerId,
-                      currency: "usd",
-                      off_session: true,
-                      confirm: true,
-                      payment_method: default_payment_method,
-                      metadata: {
-                        user: users.id,
-                        type: "renew_subscription_yearly",
-                      },
-                    },
-                    {
-                      idempotencyKey: `upgrade_${users.id}_${users.subscriptionStartDate}`,
-                    }
-                  );
-                if (YearlySubscriptionPaymentIntent.status === "succeeded") {
-                  subscription.subscriptionExpiry = new Date(
-                    subscription.subscriptionExpiry.setFullYear(
-                      subscription.subscriptionExpiry.getFullYear() + 1
-                    )
-                  );
-                }
-                if (YearlySubscriptionPaymentIntent.status !== "succeeded") {
-                  users.subscriptionStatus = "past_due";
-                  await users.save();
-                  logger.warn("Payment failed for userId:", users.id);
-                }
-              }
-              break;
+            }
             default:
-              users.subscriptionStatus = "inactive";
-              await users.save();
-              logger.warn("Unknown subscription type for userId: ", users.id);
+              user.subscriptionStatus = "inactive";
+              await user.save();
+              logger.warn(`Unknown subscription type`, {
+                userId: user.id,
+                subscriptionType: subscription.subscriptionType,
+              });
           }
+        } else {
+          logger.info(`Subscription not expired yet`, { userId: user.id });
         }
       } catch (error) {
-        logger.error("Error fetching subscription for userId: ", users.id, {
+        logger.error(`Error processing subscription`, {
+          userId: user.id,
           error: error.message,
         });
       }
     }
 
-    logger.info("Active subscriptions processed", { userCount: user.length });
+    logger.info("Active subscriptions processed successfully", {
+      userCount: users.length,
+    });
   } catch (error) {
-    logger.error("SubscriptionScheduler error: ", { error: error.message });
+    logger.error("SubscriptionScheduler error", { error: error.message });
   }
 };
 

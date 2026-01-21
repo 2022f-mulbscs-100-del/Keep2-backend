@@ -8,13 +8,14 @@ import axios from "axios";
 import { logger } from "../../utils/Logger.js";
 import Auth from "../../Modals/AuthModal.js";
 import Stripe from "stripe";
-import { SignUpValidation } from "../../validation/authValidation.js";
+// import { SignUpValidation } from "../../validation/authValidation.js";
+import Subscription from "../../Modals/SubscriptionModal.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const SignUp = async (req, res, next) => {
-  const validateData = SignUpValidation.parse(req.body);
-  const { name, email, password: preHashPassword, code } = validateData;
+  // const validateData = SignUpValidation.parse(req.body);
+  const { name, email, password: preHashPassword, code } = req.body;
 
   logger.info("params from signup controller : ", { name, email });
   try {
@@ -33,7 +34,7 @@ export const SignUp = async (req, res, next) => {
         email,
       });
       const auth = await user.createAuth({ password: hashPassword });
-
+      await Subscription.create({ userId: user.id });
       const token = Math.floor(100000 + Math.random() * 900000);
       auth.signUpConfirmationToken = token;
       const dateObj = new Date(Date.now() + 15 * 60 * 1000);

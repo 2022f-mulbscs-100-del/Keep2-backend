@@ -6,7 +6,7 @@ import { AccessToken } from "../../utils/GenerateAcessToken.js";
 import { checkExpiration } from "../../utils/CheckExpiration.js";
 import { logger } from "../../utils/Logger.js";
 import Stripe from "stripe";
-import { CodeCheck } from "./codeCheck.js";
+import { CodeCheck } from "../../validation/authValidation.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
