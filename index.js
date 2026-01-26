@@ -17,6 +17,8 @@ import { webhookHandler } from "./Controllers/PaymentController.js";
 import { startCleanUpCron } from "./cron/cleanup.cron.js";
 import { swaggerUi, swaggerSpec } from "./config/swagger.js";
 import "./Modals/associations.js";
+import GooglePassport from "./config/Googlepassport.js";
+import GithubPassport from "./config/GithubPassport.js";
 const app = express();
 logger.info("Application initializing", {
   environment: process.env.NODE_ENV,
@@ -36,6 +38,9 @@ app.use(
     credentials: true,
   })
 );
+
+app.use(GooglePassport.initialize());
+app.use(GithubPassport.initialize());
 
 app.use("/api", route);
 app.use("/api", AuthRoute);

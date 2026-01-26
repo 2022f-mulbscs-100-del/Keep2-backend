@@ -54,6 +54,16 @@ const Auth = sequelize.define(
       allowNull: true,
       defaultValue: null,
     },
+    githubId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    googleId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     timestamps: true,

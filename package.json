@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-"prepare": "husky install"
+    "prepare": "husky install"
   },
   "author": "",
   "license": "ISC",
@@ -24,10 +24,15 @@
     "mongodb": "^7.0.0",
     "mongoose": "^8.19.3",
     "mysql2": "^3.15.3",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12",
+    "passport-google-oauth20": "^2.0.0",
     "qrcode": "^1.5.4",
     "sequelize": "^6.37.7",
     "speakeasy": "^2.0.0",
     "stripe": "^20.0.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",
     "winston": "^3.19.0",
     "zod": "^4.3.5"

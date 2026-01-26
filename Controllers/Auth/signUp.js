@@ -84,13 +84,21 @@ export const SignUp = async (req, res, next) => {
         await auth.save();
 
         try {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: user.name,
-          });
-
-          user.stripeCustomerId = customer.id;
-          await user.save();
+          await stripe.customers
+            .create({
+              email: user.email,
+              name: user.name,
+            })
+            .then(async (customer) => {
+              user.stripeCustomerId = customer.id;
+              await user.save();
+            })
+            .catch((err) => {
+              logger.error("Stripe customer creation failed", {
+                error: err.message,
+              });
+              throw err;
+            });
         } catch (error) {
           logger.error(
             "Error creating Stripe customer for email: ",

@@ -298,4 +298,10 @@ route.post("/verify-mfa", AuthController.VerifyMFA);
  */
 route.post("/login-verify-mfa", AuthController.LoginVerifyMFA);
 
+// ------------------ Social Auth Routes ------------------
+route.get("/auth/google", AuthController.LoginWithGoogle);
+route.get("/auth/google/callback", AuthController.GoogleCallback);
+route.get("/auth/github", AuthController.LoginWithGithub);
+route.get("/auth/github/callback", AuthController.GithubCallback);
+
 export default route;
