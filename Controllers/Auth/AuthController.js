@@ -6,6 +6,11 @@ export { Login } from "./login.js";
 export { SignUp } from "./signUp.js";
 export { Logout } from "./logout.js";
 
+export { LoginWithGoogle } from "./loginWithGoogle.js";
+export { GoogleCallback } from "./GoogleCallback.js";
+export { LoginWithGithub } from "./LoginWithGithub.js";
+export { GithubCallback } from "./GithubCallback.js";
+
 export { signUpConfirmation } from "./signUpConfirmation.js";
 export { CodeCheck } from "./codeCheck.js";
 

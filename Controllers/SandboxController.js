@@ -32,6 +32,7 @@ export const generateSandbox = async (req, res, next) => {
             continue;
           }
           const newNotes = await Notes.create({
+            userId,
             title: hasTitle ? faker.internet.username() : "",
             description: hasDescription ? faker.lorem.paragraph() : "",
             pinned:
