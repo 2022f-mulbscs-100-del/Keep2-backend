@@ -4,8 +4,15 @@ import { logger } from "../../utils/Logger.js";
 
 export const updateNotes = async (req, res, next) => {
   const { id } = req.params;
-  const { title, description, pinned, isDeleted, isArchived, imageUrl } =
-    req.body;
+  const {
+    title,
+    description,
+    pinned,
+    isDeleted,
+    isArchived,
+    imageUrl,
+    bgColor,
+  } = req.body;
 
   logger.info("Update note called in NotesController", {
     noteId: id,
@@ -29,6 +36,7 @@ export const updateNotes = async (req, res, next) => {
         isDeleted,
         isArchived,
         image: imageUrlCombined,
+        bgColor: bgColor || null,
       },
       { where: { id } }
     );

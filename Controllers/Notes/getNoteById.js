@@ -1,3 +1,4 @@
+import Collaborators from "../../Modals/collaborators.modal.js";
 import Notes from "../../Modals/notes.modal.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
@@ -7,7 +8,9 @@ export const getNotesById = async (req, res, next) => {
   logger.info("Fetching note by ID", { noteId: id });
 
   try {
-    const note = await Notes.findByPk(id);
+    const note = await Notes.findByPk(id, {
+      include: [{ model: Collaborators, as: "collaborators" }],
+    });
     if (!note) {
       logger.warn("Note not found", { noteId: id });
       return next(ErrorHandler(404, "Note not found"));

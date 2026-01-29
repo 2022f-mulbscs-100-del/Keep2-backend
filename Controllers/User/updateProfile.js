@@ -14,6 +14,7 @@ export const updateProfile = async (req, res, next) => {
     autoLogoutEnabled,
     autoLogoutTime,
     MfaEnabled,
+    layout,
   } = profileData || {};
   logger.info("params from request body:", { profileData: profileData });
 
@@ -40,6 +41,10 @@ export const updateProfile = async (req, res, next) => {
     if (isTwoFaEnabled !== undefined) {
       user.isTwoFaEnabled = isTwoFaEnabled;
       logger.info("Two FA status updated", { isTwoFaEnabled: isTwoFaEnabled });
+    }
+    if (layout) {
+      user.layout = layout;
+      logger.info("Layout updated", { layout: layout });
     }
     if (autoLogoutEnabled !== undefined) {
       user.autoLogoutEnabled = autoLogoutEnabled;

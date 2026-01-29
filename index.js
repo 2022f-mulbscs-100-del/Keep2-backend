@@ -1,5 +1,5 @@
 import express from "express";
-import route from "./Routes/NotesRoute.js";
+import NoteRoute from "./Routes/NotesRoute.js";
 import dotenv from "dotenv";
 import { authenticateDB } from "./config/db.confing.js";
 import cors from "cors";
@@ -19,7 +19,16 @@ import { swaggerUi, swaggerSpec } from "./config/swagger.js";
 import "./Modals/associations.js";
 import GooglePassport from "./config/Googlepassport.js";
 import GithubPassport from "./config/GithubPassport.js";
+import CollaboratorsRoute from "./Routes/CollaboratorsRoute.js";
+import http from "http";
+import { initializeSocket } from "./socket/socket.js";
+
 const app = express();
+
+const server = http.createServer(app);
+
+initializeSocket(server);
+
 logger.info("Application initializing", {
   environment: process.env.NODE_ENV,
   port: process.env.SERVER_PORT,
@@ -42,14 +51,15 @@ app.use(
 app.use(GooglePassport.initialize());
 app.use(GithubPassport.initialize());
 
-app.use("/api", route);
+app.get("/refresh", Refresh);
+app.use("/api", NoteRoute);
 app.use("/api", AuthRoute);
 app.use("/api", Sandboxroute);
 app.use("/api", UserRoute);
 app.use("/api", paymentRoute);
 app.use("/api", sendEmail);
-app.get("/refresh", Refresh);
 app.use("/api", verifyTurnstileToken);
+app.use("/api", CollaboratorsRoute);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 logger.info("Swagger documentation available at /api-docs");
 
@@ -69,7 +79,7 @@ app.use((err, req, res, next) => {
 
 startCleanUpCron();
 authenticateDB();
-app.listen(process.env.SERVER_PORT, () => {
+server.listen(process.env.SERVER_PORT, () => {
   logger.info("Server started successfully", {
     port: process.env.SERVER_PORT,
     environment: process.env.NODE_ENV,

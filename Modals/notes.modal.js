@@ -48,11 +48,26 @@ const Notes = sequelize.define(
     image: {
       type: DataTypes.JSON, // MySQL supports JSON
       allowNull: true,
-      defaultValue: [], // optional
+      defaultValue: [],
     },
     hasReminder: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    bgColor: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    lastEditedBy: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: null,
+    },
+    OwnerAttributes: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

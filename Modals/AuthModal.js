@@ -64,6 +64,21 @@ const Auth = sequelize.define(
       allowNull: true,
       defaultValue: null,
     },
+    challenge: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    passkeyCredentialID: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    passkeyPublicKey: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     timestamps: true,
