@@ -5,6 +5,7 @@ import RemainderNotes from "./RemainderNotes.modal.js";
 import Subscription from "./SubscriptionModal.js";
 import User from "./UserModal.js";
 import { logger } from "../utils/Logger.js";
+import Collaborators from "./collaborators.modal.js";
 
 logger.info("Setting up database model associations");
 
@@ -84,6 +85,20 @@ LabelCategories.belongsTo(Notes, {
   foreignKey: "noteId",
   as: "note",
 });
+
+Notes.hasMany(Collaborators, {
+  foreignKey: "noteId",
+  as: "collaborators",
+  onDelete: "CASCADE",
+});
+
+Collaborators.belongsTo(Notes, {
+  foreignKey: "noteId",
+  as: "note",
+});
+
+// This creates helper methods like:
+// collaborator.getNote()
 
 // “This reminder belongs to a user
 // And a user can have many reminders”

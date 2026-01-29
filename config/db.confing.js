@@ -57,7 +57,7 @@ const sequelize = new Sequelize(
 // Authenticate and sync database
 async function authenticateDB() {
   try {
-    await sequelize.authenticate();
+    await sequelize.authenticate({ force: true });
     logger.info("Database connection established successfully", {
       environment: isLocal ? "LOCAL" : "PRODUCTION",
     });

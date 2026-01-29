@@ -51,6 +51,15 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: "inactive",
     },
+    layout: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "default",
+    },
+    passKeyEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
   {
     timestamps: true,

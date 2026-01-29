@@ -1,6 +1,7 @@
 import express from "express";
 import * as AuthController from "../Controllers/Auth/AuthController.js";
 import { logger } from "../utils/Logger.js";
+import { VerifyToken } from "../utils/VerifyToken.js";
 
 const route = express.Router();
 logger.info("AuthRoute initialized");
@@ -304,4 +305,68 @@ route.get("/auth/google/callback", AuthController.GoogleCallback);
 route.get("/auth/github", AuthController.LoginWithGithub);
 route.get("/auth/github/callback", AuthController.GithubCallback);
 
+// ---------------------- Pass key Route --------------------
+route.post(
+  "/passkey-registration",
+  VerifyToken,
+  AuthController.passKeyRegistration
+);
+route.post(
+  "/passkey-verification",
+  VerifyToken,
+  AuthController.passKeyRegistrationVerification
+);
 export default route;
+
+// app.post("/webauthn/login-options", (req, res) => {
+//   const userId = req.body.userId;
+//   const challenge = crypto.randomBytes(32).toString("base64");
+
+//   db.saveChallenge(userId, challenge);
+
+//   // Fetch stored credentialID for this user
+//   const credentialID = db.getCredentialID(userId);
+
+//   res.json({
+//     challenge,
+//     allowCredentials: [{ type: "public-key", id: credentialID }],
+//   });
+// });
+
+// app.post("/webauthn/login-verify", (req, res) => {
+//   const { userId, assertionResponse } = req.body;
+//   const expectedChallenge = db.getChallenge(userId);
+//   const publicKey = db.getPublicKey(userId);
+
+//   const verified = verifyAssertion(assertionResponse, expectedChallenge, publicKey);
+
+//   if (verified) {
+//     res.json({ success: true, token: "JWT or session" });
+//   } else {
+//     res.status(400).json({ success: false });
+//   }
+// });
+
+// login
+// async function loginPasskey(userId) {
+//   // 1. Get login challenge from backend
+//   const optionsRes = await fetch("/webauthn/login-options", {
+//     method: "POST",
+//     body: JSON.stringify({ userId }),
+//     headers: { "Content-Type": "application/json" },
+//   });
+//   const options = await optionsRes.json();
+
+//   // 2. Get assertion from device
+//   const assertion = await navigator.credentials.get({ publicKey: options });
+
+//   // 3. Send assertion to backend for verification
+//   const res = await fetch("/webauthn/login-verify", {
+//     method: "POST",
+//     body: JSON.stringify({ userId, assertionResponse: assertion }),
+//     headers: { "Content-Type": "application/json" },
+//   });
+
+//   const data = await res.json();
+//   if (data.success) alert("Logged in!");
+// }

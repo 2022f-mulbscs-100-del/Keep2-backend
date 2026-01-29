@@ -68,5 +68,52 @@ route.patch("/updateProfile", VerifyToken, UserController.updateProfile);
  *         description: Unauthorized - Invalid or missing token
  */
 route.delete("/deleteProfile", VerifyToken, UserController.DeleteProfile);
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   get:
+ *     summary: Get user by email
+ *     description: Fetch a user's public profile information using their email address.
+ *     tags:
+ *       - Users
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: User email address
+ *         schema:
+ *           type: string
+ *           example: user@example.com
+ *     responses:
+ *       200:
+ *         description: User data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 name:
+ *                   type: string
+ *                   example: John Doe
+ *                 email:
+ *                   type: string
+ *                   example: john@example.com
+ *                 profileImage:
+ *                   type: string
+ *                   example: https://cdn.example.com/avatar.png
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User not found
+ *       500:
+ *         description: Internal server error
+ */
 
+route.get("/getUser/:email", UserController.getUserById);
 export default route;
