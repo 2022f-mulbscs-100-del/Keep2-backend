@@ -5,9 +5,13 @@ import {
 } from "../Controllers/SandboxController.js";
 import { VerifyToken } from "../utils/VerifyToken.js";
 import { logger } from "../utils/Logger.js";
+import { GeneralRateLimiter } from "../utils/RateLimiter.js";
 
 const Sandboxroute = express.Router();
+
 logger.info("SandboxRoute initialized");
+
+Sandboxroute.use(GeneralRateLimiter);
 /**
  * @swagger
  * /generateSandbox:

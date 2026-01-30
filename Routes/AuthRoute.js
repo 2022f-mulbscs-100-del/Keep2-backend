@@ -2,9 +2,14 @@ import express from "express";
 import * as AuthController from "../Controllers/Auth/AuthController.js";
 import { logger } from "../utils/Logger.js";
 import { VerifyToken } from "../utils/VerifyToken.js";
+import { AuthRateLimiter } from "../utils/RateLimiter.js";
 
 const route = express.Router();
 logger.info("AuthRoute initialized");
+
+route.use(AuthRateLimiter);
+
+// --------------------  Auth Routes --------------------
 
 /**
  * @swagger
@@ -84,6 +89,10 @@ route.post("/signup", AuthController.SignUp);
  */
 route.get("/logout", AuthController.Logout);
 
+// -------------------- Code Confirmation Route --------------------
+
+route.post("/signUpConfirmation", AuthController.signUpConfirmation);
+
 /**
  * @swagger
  * /code-check:
@@ -109,6 +118,8 @@ route.get("/logout", AuthController.Logout);
  *         description: Invalid code
  */
 route.post("/code-check", AuthController.CodeCheck);
+
+// -------------------- Password Reset Routes --------------------
 
 /**
  * @swagger
@@ -139,6 +150,8 @@ route.post("/code-check", AuthController.CodeCheck);
  */
 route.post("/reset-password", AuthController.resetPassword);
 
+// -------------------- Forget Password  Route --------------------
+
 /**
  * @swagger
  * /forget-password-token:
@@ -166,67 +179,7 @@ route.post("/reset-password", AuthController.resetPassword);
  */
 route.post("/forget-password-token", AuthController.forgetPasswordToken);
 
-/**
- * @swagger
- * /2fa-login:
- *   post:
- *     summary: Two-factor authentication login
- *     tags:
- *       - Authentication
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *               - otp
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *               otp:
- *                 type: string
- *     responses:
- *       200:
- *         description: 2FA login successful
- *       400:
- *         description: Invalid OTP or credentials
- */
-route.post("/2fa-login", AuthController.TwoFaLogin);
-
-/**
- * @swagger
- * /signUpConfirmation:
- *   post:
- *     summary: Confirm user signup
- *     tags:
- *       - Authentication
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - confirmationCode
- *             properties:
- *               email:
- *                 type: string
- *               confirmationCode:
- *                 type: string
- *     responses:
- *       200:
- *         description: Signup confirmed
- *       400:
- *         description: Invalid code or email
- */
-route.post("/signUpConfirmation", AuthController.signUpConfirmation);
+// -------------------- Gnerate MFA Routes --------------------
 
 /**
  * @swagger
@@ -270,6 +223,41 @@ route.post("/MFA-generate", AuthController.generateMFA);
  */
 route.post("/verify-mfa", AuthController.VerifyMFA);
 
+// -------------------- Passkey , 2FA and MFA Login Routes --------------------
+
+/**
+ * @swagger
+ * /2fa-login:
+ *   post:
+ *     summary: Two-factor authentication login
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - otp
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 2FA login successful
+ *       400:
+ *         description: Invalid OTP or credentials
+ */
+route.post("/2fa-login", AuthController.TwoFaLogin);
+
 /**
  * @swagger
  * /login-verify-mfa:
@@ -298,6 +286,8 @@ route.post("/verify-mfa", AuthController.VerifyMFA);
  *         description: Invalid MFA code
  */
 route.post("/login-verify-mfa", AuthController.LoginVerifyMFA);
+
+// route.post("/passKey-login", AuthController.RefreshToken);
 
 // ------------------ Social Auth Routes ------------------
 route.get("/auth/google", AuthController.LoginWithGoogle);
@@ -370,3 +360,10 @@ export default route;
 //   const data = await res.json();
 //   if (data.success) alert("Logged in!");
 // }
+
+//------------ auth flow
+// if user have all the auth methods set up then on priority basis
+// 1. passkey
+// 2. mfa
+// 3. email
+// 4. password

@@ -7,6 +7,7 @@ import Stripe from "stripe";
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const GithubCallback = (req, res, next) => {
+  //------ authenticate with passport github strategy
   passport.authenticate(
     "github",
     { session: false, failureRedirect: "/" },
@@ -16,38 +17,40 @@ export const GithubCallback = (req, res, next) => {
         return next(err);
       }
 
+      // ------ check if user exists
       if (!user) {
         return res.redirect("/");
       }
 
-      await stripe.customers
-        .create({
-          email: user.email,
-          name: user.name,
-        })
-        .then(async (customer) => {
-          user.stripeCustomerId = customer.id;
-          await user.save();
-        })
-        .catch((stripeErr) => {
-          logger.error("Stripe customer creation failed", {
-            error: stripeErr.message,
+      // ------ create Stripe customer if not exists
+      if (!user.stripeCustomerId) {
+        await stripe.customers
+          .create({
+            email: user.email,
+            name: user.name,
+          })
+          .then(async (customer) => {
+            user.stripeCustomerId = customer.id;
+            await user.save();
+          })
+          .catch((stripeErr) => {
+            logger.error("Stripe customer creation failed", {
+              error: stripeErr.message,
+            });
           });
-        });
+      }
 
+      // ------ generate tokens
       const refreshToken = RefreshToken(user);
       const accessToken = AccessToken(user);
 
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production", // HTTPS only in production
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // CSRF protection
+        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", // CSRF protection
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: "/",
       });
-      //     res.status(200).json({
-      //   accessToken,
-      // });
 
       res.send(`
         <html>

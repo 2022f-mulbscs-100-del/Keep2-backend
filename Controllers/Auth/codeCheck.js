@@ -6,10 +6,14 @@ import Auth from "../../Modals/AuthModal.js";
 import { CodeCheck as codeCheckValidation } from "../../validation/authValidation.js";
 
 export const CodeCheck = async (req, res, next) => {
+  //------ validate request body
   const validateData = codeCheckValidation.parse(req.body);
+
   const { code, email } = validateData;
+
   logger.info("CodeCheck called with: ", { email });
   try {
+    // ------ find user by email
     const user = await User.findOne({
       where: { email },
       include: [{ model: Auth, as: "auth" }],
@@ -18,8 +22,11 @@ export const CodeCheck = async (req, res, next) => {
       logger.warn("CodeCheck failed: User not found for email: ", email);
       return next(ErrorHandler(404, "User not found"));
     }
+
+    // ------ get auth record
     const auth = user.auth;
 
+    // ------ verify code
     if (auth.resetPasswordToken === code) {
       if (checkExpiration(auth.resetPasswordExpiry)) {
         logger.info("CodeCheck token verified successfully for email: ", email);

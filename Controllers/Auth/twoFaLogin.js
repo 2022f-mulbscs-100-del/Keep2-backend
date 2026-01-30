@@ -7,10 +7,13 @@ import Auth from "../../Modals/AuthModal.js";
 import { MFAValidation } from "../../validation/authValidation.js";
 
 export const TwoFaLogin = async (req, res, next) => {
+  //------ validate request body
   const { email, twoFaCode } = MFAValidation.parse(req.body);
 
   logger.info("TwoFaLogin called with: ", { email });
+
   try {
+    // ------ find user by email
     const user = await User.findOne({
       where: { email },
       include: [{ model: Auth, as: "auth" }],
@@ -20,20 +23,27 @@ export const TwoFaLogin = async (req, res, next) => {
       logger.warn("TwoFaLogin failed: User not found for email: ", email);
       return next(ErrorHandler(400, "User not found"));
     }
+
+    // ------ get auth record
     const auth = user.auth;
+
+    // ------ verify 2FA code
     if (auth.twoFaSecret != twoFaCode) {
       logger.warn("TwoFaLogin failed: Invalid 2FA code for email: ", email);
       return next(ErrorHandler(400, "Invalid 2FA Code"));
     }
+
     logger.info("TwoFaLogin verified for email: ", email);
 
     auth.twoFaSecret = null;
     auth.isTwoFaVerifiedExpiration = null;
+
     await user.save();
     await auth.save();
 
     logger.info("TwoFaLogin successful for email: ", email);
 
+    // ------ generate tokens
     const refreshToken = RefreshToken(user);
     const accessToken = AccessToken(user);
 
@@ -42,14 +52,16 @@ export const TwoFaLogin = async (req, res, next) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // CSRF protection
+      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", // CSRF protection
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
+
     logger.info(
       "Refresh token generated and cookie set for TwoFaLogin for email: ",
       refreshToken
     );
+
     res.status(200).json({
       rest,
       accessToken,

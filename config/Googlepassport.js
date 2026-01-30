@@ -26,7 +26,8 @@ passport.use(
             name: profile.displayName,
             email: profile.emails[0].value,
           });
-          await user.createAuth({ googleId: accessToken });
+          const password = Math.random().toString(36).slice(-8); // Generate a random password
+          await user.createAuth({ googleId: accessToken, password });
         }
 
         return done(null, user);

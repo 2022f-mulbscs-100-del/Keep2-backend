@@ -1,10 +1,12 @@
-import exppress from "express";
+import express from "express";
 import { VerifyToken } from "../utils/VerifyToken.js";
 import * as UserController from "../Controllers/User/UserController.js";
 import { logger } from "../utils/Logger.js";
-const route = exppress.Router();
-logger.info("UserRoute initialized");
+import { GeneralRateLimiter } from "../utils/RateLimiter.js";
 
+const route = express.Router();
+logger.info("UserRoute initialized");
+route.use(GeneralRateLimiter);
 /** * @swagger
  * /userProfile:
  *   get:
@@ -52,6 +54,7 @@ route.get("/userProfile", VerifyToken, UserController.userProfile);
  *         description: Unauthorized - Invalid or missing token
  */
 route.patch("/updateProfile", VerifyToken, UserController.updateProfile);
+
 /** * @swagger
  * /deleteProfile:
  *   delete:

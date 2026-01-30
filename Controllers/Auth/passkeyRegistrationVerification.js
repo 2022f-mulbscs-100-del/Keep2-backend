@@ -4,20 +4,28 @@ import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 export const passKeyRegistrationVerification = async (req, res, next) => {
   const { id } = req.user;
+
+  //------ validate request body
   const { attestationResponse } = req.body;
 
   try {
+    // ------ find user by id
     const user = await User.findByPk(id, {
       include: [{ model: Auth, as: "auth" }],
     });
+
     if (!user) {
       return next(ErrorHandler(404, "User not found"));
     }
+
+    // ------ get auth record
     const auth = user.auth;
-    console.log("Auth record:", auth);
+
     if (!auth) {
       return next(ErrorHandler(400, "Authentication details not found"));
     }
+    // ------ verify passkey registration response
+
     const challenge = auth.challenge;
 
     const { verified, registrationInfo } = await verifyRegistrationResponse({
