@@ -31,7 +31,7 @@ export const passKeyRegistrationVerification = async (req, res, next) => {
     const { verified, registrationInfo } = await verifyRegistrationResponse({
       response: attestationResponse,
       expectedChallenge: challenge,
-      expectedOrigin: "http://localhost:5173",
+      expectedOrigin: process.env.FRONTEND_URL,
       expectedRPID: "localhost",
       requireUserVerification: false,
     });

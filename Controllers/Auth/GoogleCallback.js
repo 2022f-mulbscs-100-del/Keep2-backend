@@ -61,7 +61,7 @@ export const GoogleCallback = async (req, res, next) => {
                   token: "${accessToken}",
                   user: ${JSON.stringify({ id: user.id, email: user.email, name: user.name })}
                 },
-                "http://localhost:5173"
+                "${process.env.FRONTEND_URL}"
               );
               window.close(); 
             </script>

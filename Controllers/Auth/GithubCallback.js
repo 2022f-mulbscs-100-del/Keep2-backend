@@ -62,7 +62,7 @@ export const GithubCallback = (req, res, next) => {
                   token: "${accessToken}",
                   user: ${JSON.stringify({ email: user.email, name: user.name })}
                 },
-                "http://localhost:5173" // your frontend origin
+                "${process.env.FRONTEND_URL}" // your frontend origin
               );
               window.close(); // close the popup
             </script>
