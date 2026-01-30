@@ -33,6 +33,14 @@ logger.info("Application initializing", {
   environment: process.env.NODE_ENV,
   port: process.env.SERVER_PORT,
 });
+
+// const limiter = rateLimit({
+//   keyGenerator: (req) => req.user.id, // use authenticated user id
+//   windowMs: 60 * 1000,
+//   max: 10,
+//   message: "Too many requests from this user",
+// });
+
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),

@@ -7,9 +7,12 @@ import Auth from "../../Modals/AuthModal.js";
 import { emailValidation } from "../../validation/authValidation.js";
 
 export const generateMFA = async (req, res, next) => {
+  //------ validate request body
   const { email } = emailValidation.parse(req.body);
   logger.info("generateMFA called with:", { email });
+
   try {
+    // ------ find user by email
     const user = await User.findOne({
       where: { email },
       include: [{ model: Auth, as: "auth" }],
@@ -19,20 +22,35 @@ export const generateMFA = async (req, res, next) => {
       logger.warn("generateMFA failed: User not found for email: ", email);
       return next(ErrorHandler(400, "User not found"));
     }
+
+    // ------ get auth record
     const auth = user.auth;
 
+    if (!auth) {
+      logger.warn(
+        "generateMFA failed: Auth record not found for user: ",
+        email
+      );
+      return next(ErrorHandler(400, "Auth record not found"));
+    }
+
+    // ------ generate MFA secret and QR code
     const secret = speakeasy.generateSecret({
       length: 20,
       name: `Keeper ${email}`,
     });
-    logger.info("MFA secret generated for email: ", email);
+    logger.info("MFA secret generated for email: ", {
+      secret: secret.base32,
+      email,
+    });
 
-    const qrCode = QRCode.toDataURL(secret.otpauth_url);
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
 
     auth.MfaSeceret = secret.base32;
     user.MfaEnabled = false;
     await user.save();
     await auth.save();
+
     logger.info("MFA QR code generated and saved for email: ", email);
 
     res

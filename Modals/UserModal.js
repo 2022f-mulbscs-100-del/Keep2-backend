@@ -58,6 +58,7 @@ const User = sequelize.define(
     },
     passKeyEnabled: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: false,
     },
   },

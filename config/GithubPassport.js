@@ -25,7 +25,8 @@ passport.use(
             name: profile.username,
             email: email || "github_user_" + profile.id + "@example.com",
           });
-          await user.createAuth({ githubId: accessToken });
+          const password = Math.random().toString(36).slice(-8); // Generate a random password
+          await user.createAuth({ githubId: accessToken, password });
         }
         return done(null, user);
       } catch (err) {

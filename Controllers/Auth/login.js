@@ -10,6 +10,7 @@ import { LoginValidation } from "../../validation/authValidation.js";
 
 export const Login = async (req, res, next) => {
   try {
+    //------ validate request body
     const validatedData = LoginValidation.parse(req.body);
     const { email, password: pass } = validatedData;
 
@@ -18,6 +19,7 @@ export const Login = async (req, res, next) => {
       password: pass ? "****" : undefined,
     });
 
+    // ------ find user by email
     const user = await User.findOne({
       where: { email },
       include: [{ model: Auth, as: "auth" }],
@@ -26,19 +28,15 @@ export const Login = async (req, res, next) => {
       logger.warn("Login failed", { email, reason: "User not found" });
       return next(ErrorHandler(400, "User not found"));
     }
+
+    // ------ get auth record
     const auth = user.auth;
     if (!auth) {
       logger.warn("Login failed", { email, reason: "Auth record not found" });
       return next(ErrorHandler(400, "Authentication details not found"));
     }
 
-    const isPasswordCorrect = await bcrypt.compare(pass, auth.password);
-
-    if (!isPasswordCorrect) {
-      logger.warn("Login failed for email: ", { email }, " - Invalid Password");
-      return next(ErrorHandler(400, "Invalid Password"));
-    }
-
+    // ------ check if email is verified
     if (auth.signUpConfirmation === false) {
       const token = Math.floor(100000 + Math.random() * 900000);
       auth.signUpConfirmationToken = token;
@@ -77,6 +75,12 @@ export const Login = async (req, res, next) => {
         });
         return next(error);
       }
+    }
+
+    // ------ check for passkey, mfa and 2fa if enable then respond accordingly
+    if (user.passKeyEnabled === "1") {
+      logger.info("Login attempt with passkey enabled for email: ", { email });
+      return res.status(200).json({ message: "Passkey enabled" });
     }
 
     if (user.MfaEnabled) {
@@ -127,25 +131,29 @@ export const Login = async (req, res, next) => {
         .json({ message: "2FA enabled", isTwoFaEnabled: user.isTwoFaEnabled });
     }
 
+    // ------ validate password
+    const isPasswordCorrect = await bcrypt.compare(pass, auth.password);
+    if (!isPasswordCorrect) {
+      logger.warn("Login failed for email: ", { email }, " - Invalid Password");
+      return next(ErrorHandler(400, "Invalid Password"));
+    }
+
+    // ------ generate tokens and respond
     const refreshToken = RefreshToken(user);
     const accessToken = AccessToken(user);
+
+    // ------ prepare user data for response
     //eslint-disable-next-line
     const { auth: authData, ...rest } = user.dataValues;
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // CSRF protection
+      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", // CSRF protection
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
 
-    logger.info("Refresh token generated and cookie set for login : ", {
-      refreshToken,
-    });
-    logger.debug(
-      "Refresh token cookie details - httpOnly: true, sameSite: strict, maxAge: 7 days"
-    );
     logger.info("Login successful for email: ", { email });
     res.status(200).json({
       rest,

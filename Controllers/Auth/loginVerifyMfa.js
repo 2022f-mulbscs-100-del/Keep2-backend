@@ -8,10 +8,13 @@ import Auth from "../../Modals/AuthModal.js";
 import { TwoFaValidation } from "../../validation/authValidation.js";
 
 export const LoginVerifyMFA = async (req, res, next) => {
+  //------ validate request body
   const { email, token } = TwoFaValidation.parse(req.body);
 
   logger.info("LoginVerifyMFA called with: ", { email });
+
   try {
+    // ------ find user by email
     const user = await User.findOne({
       where: { email },
       include: [{ model: Auth, as: "auth" }],
@@ -23,8 +26,11 @@ export const LoginVerifyMFA = async (req, res, next) => {
       });
       return next(ErrorHandler(400, "User not found"));
     }
+
+    // ------ get auth record
     const auth = user.auth;
 
+    // ------ verify MFA token
     const verified = speakeasy.totp.verify({
       secret: auth.MfaSeceret,
       encoding: "base32",
@@ -38,8 +44,10 @@ export const LoginVerifyMFA = async (req, res, next) => {
       });
       return next(ErrorHandler(400, "Invalid MFA Token"));
     }
+
     logger.info("LoginVerifyMFA token verified for email: ", { email });
 
+    // ------ generate tokens
     const refreshToken = RefreshToken(user);
     const accessToken = AccessToken(user);
 
@@ -49,17 +57,17 @@ export const LoginVerifyMFA = async (req, res, next) => {
       "Refresh token generated and cookie set for LoginVerifyMFA : ",
       { refreshToken }
     );
+
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // CSRF protection
+      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", // CSRF protection
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
-    logger.info("checking environment for cookie settings", {
-      nodeEnv: process.env.NODE_ENV,
-    });
+
     logger.info("LoginVerifyMFA successful for email: ", { email });
+
     res.status(200).json({
       rest,
       accessToken,
