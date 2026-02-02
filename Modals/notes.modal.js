@@ -1,4 +1,4 @@
-import { sequelize } from "../config/db.confing.js";
+import { sequelize } from "../config/db.config.js";
 import { DataTypes } from "sequelize";
 import { logger } from "../utils/Logger.js";
 

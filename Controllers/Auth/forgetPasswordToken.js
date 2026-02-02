@@ -1,74 +1,53 @@
-import User from "../../Modals/UserModal.js";
+import { AuthService } from "../../Services/Auth/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import axios from "axios";
 import { logger } from "../../utils/Logger.js";
-import Auth from "../../Modals/AuthModal.js";
 import { emailValidation } from "../../validation/authValidation.js";
+import { AUTH_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Forget Password Token Controller
+ * Generates password reset token and sends email
+ */
 export const forgetPasswordToken = async (req, res, next) => {
-  //------ validate request body
-  const validatedData = emailValidation.parse(req.body);
-
-  const { email } = validatedData;
-
-  logger.info("forgetPasswordToken called with: ", { email });
   try {
-    // ------ find user by email
-    const user = await User.findOne({
-      where: { email },
-      include: [{ model: Auth, as: "auth" }],
-    });
+    // Validate request body
+    const validatedData = emailValidation.parse(req.body);
+    const { email } = validatedData;
 
+    logger.info("Forget password request", { email });
+
+    // Check if user exists
+    const user = await AuthService.getUserByEmail(email);
     if (!user) {
-      logger.warn(
-        "forgetPasswordToken failed: User not found for email: ",
-        email
+      logger.warn("Forget password failed: User not found", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.NOT_FOUND, AUTH_MESSAGES.USER_NOT_FOUND)
       );
-      return next(ErrorHandler(404, "User not exist"));
     }
-    // ------ get auth record
-    const auth = user.auth;
-    // ------ generate unique token and expiry
-    const uniqueToken = Math.floor(100000 + Math.random() * 900000);
-    const expiryData = Date.now() + 15 * 60 * 1000;
-    const dateObj = new Date(expiryData);
 
-    auth.resetPasswordToken = uniqueToken;
-    auth.resetPasswordExpiry = dateObj.getTime();
+    // Generate reset token and send email
+    const resetToken = await AuthService.generatePasswordResetToken(email);
 
-    await auth.save();
-    logger.info("Reset password token generated for email: ", email);
+    logger.info("Password reset email sent", { email });
 
-    // ------ send password reset email
-    await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      {
-        to: [{ email: user.email, name: user.name }],
-        templateId: 2,
-        params: {
-          code: uniqueToken,
-        },
-      },
-      {
-        timeout: 10000,
-        headers: {
-          "api-key": process.env.BREVO_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    logger.info("Password reset email sent to: ", email);
-
-    res
-      .status(200)
-      .json({ uniqueToken, message: "token generated sucessfully" });
+    res.status(HTTP_STATUS.OK).json({
+      resetToken,
+      message: AUTH_MESSAGES.PASSWORD_RESET_EMAIL_SENT,
+    });
   } catch (error) {
-    logger.error(
-      "forgetPasswordToken error for email: ",
-      email,
-      " - ",
-      error.message
-    );
+    if (error.name === "ZodError") {
+      logger.warn("Forget password validation failed", {
+        errors: error.errors.map((e) => e.message),
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, error.errors[0].message)
+      );
+    }
+
+    logger.error("Forget password error", {
+      email: req.body?.email,
+      message: error.message,
+    });
     next(error);
   }
 };

@@ -1,29 +1,52 @@
-import LabelCategories from "../../Modals/label_categories.modal.js";
+import { NotesService } from "../../Services/Notes/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
+import { NOTE_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Update Label Category Controller
+ * Updates an existing label category
+ */
 export const updateLableCategories = async (req, res, next) => {
-  const { id: userId } = req.user;
-  logger.info("updateLableCategories called with userId: ", { userId });
   try {
+    const { id: userId } = req.user;
     const { id, categoryName, colorCode } = req.body;
-    logger.info("createLabelCategories called with: ", {
+
+    logger.info("Update label category request", {
       userId,
+      categoryId: id,
       categoryName,
     });
-    const label = await LabelCategories.findByPk(id);
+
+    // Check if label exists
+    const label = await NotesService.getLabelCategoryById(id);
     if (!label) {
-      return next(ErrorHandler(404, "Label Category not found"));
+      logger.warn("Update failed: Label category not found", {
+        categoryId: id,
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.NOT_FOUND, NOTE_MESSAGES.LABEL_NOT_FOUND)
+      );
     }
-    await label.update({
+
+    // Update label category using service
+    const updatedLabel = await NotesService.updateLabelCategory(id, {
       categoryName,
       colorCode,
     });
-    label.save();
-    logger.info("Label Category added successfully for userId: ", userId);
-    res.json(label);
+
+    logger.info("Label category updated successfully", {
+      userId,
+      categoryId: id,
+    });
+
+    res.status(HTTP_STATUS.OK).json(updatedLabel);
   } catch (error) {
+    logger.error("Update label category error", {
+      userId: req.user?.id,
+      categoryId: req.body?.id,
+      message: error.message,
+    });
     next(error);
-    logger.error("createLabelCategories error: ", { error: error.message });
   }
 };

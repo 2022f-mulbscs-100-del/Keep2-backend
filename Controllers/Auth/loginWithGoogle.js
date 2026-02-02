@@ -1,6 +1,13 @@
 import passport from "passport";
+import { logger } from "../../utils/Logger.js";
 
+/**
+ * Login With Google Controller
+ * Initiates Google OAuth authentication
+ */
 export const LoginWithGoogle = (req, res, next) => {
+  logger.info("Google login initiated");
+
   passport.authenticate("google", {
     scope: [
       "openid",

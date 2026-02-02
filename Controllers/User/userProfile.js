@@ -1,40 +1,33 @@
-import Auth from "../../Modals/AuthModal.js";
-import User from "../../Modals/UserModal.js";
+import { UserService } from "../../Services/User/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
+import { HTTP_STATUS, USER_MESSAGES } from "../../Constants/messages.js";
 
+/**
+ * User Profile Controller
+ * Fetches authenticated user's complete profile
+ */
 export const userProfile = async (req, res, next) => {
-  logger.info("User profile called in UserController");
-
-  const userData = req.user;
-  logger.info("User data from token:", { userData: userData });
-
-  const { id } = userData;
-  logger.info("params from the user profile request", { id: id });
-
   try {
-    let user;
-    if (process.env.NODE_ENV === "development") {
-      user = await User.findByPk(id, {
-        include: [
-          { model: Auth, as: "auth", attributes: { exclude: ["password"] } },
-        ],
-      });
-    } else {
-      user = await User.findByPk(id);
-    }
+    const { id: userId } = req.user;
 
+    logger.info("User profile request", { userId });
+
+    const user = await UserService.getUserProfile(userId);
     if (!user) {
-      logger.error("user not exists", { userId: id });
-      return next(ErrorHandler(404, "user not exists"));
+      logger.warn("User profile not found", { userId });
+      return next(
+        ErrorHandler(HTTP_STATUS.NOT_FOUND, USER_MESSAGES.USER_NOT_FOUND)
+      );
     }
 
-    res.status(200).json(user);
-    logger.info("User profile fetched successfully", { userProfile: user });
+    logger.info("User profile fetched successfully", { userId });
+
+    res.status(HTTP_STATUS.OK).json(user);
   } catch (error) {
-    logger.error("Error fetching user profile", {
-      userId: id,
-      error: error.message,
+    logger.error("User profile error", {
+      userId: req.user?.id,
+      message: error.message,
     });
     next(error);
   }

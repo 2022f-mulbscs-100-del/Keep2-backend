@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import sequelize from "../config/db.confing.js";
+import sequelize from "../config/db.config.js";
 
 const Collaborators = sequelize.define(
   "collaborators",

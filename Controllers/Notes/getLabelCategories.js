@@ -1,20 +1,30 @@
-import LabelCategories from "../../Modals/label_categories.modal.js";
+import { NotesService } from "../../Services/Notes/index.js";
 import { logger } from "../../utils/Logger.js";
+import { HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Get Label Categories Controller
+ * Retrieves all label categories for the authenticated user
+ */
 export const getLabelCategories = async (req, res, next) => {
-  const { id: userId } = req.user;
-  logger.info("getLabelCategories called with userId: ", { userId });
-
   try {
-    const labelCategories = await LabelCategories.findAll({
-      where: { userId },
-    });
-    logger.info("Label Categories fetched successfully for userId: ", userId);
-    res.json(labelCategories);
-  } catch (error) {
-    logger.error("Error fetching label categories", {
+    const { id: userId } = req.user;
+
+    logger.info("Get label categories request", { userId });
+
+    // Fetch label categories using service
+    const labelCategories = await NotesService.getLabelCategories(userId);
+
+    logger.info("Label categories fetched successfully", {
       userId,
-      error: error.message,
+      count: labelCategories.length,
+    });
+
+    res.status(HTTP_STATUS.OK).json(labelCategories);
+  } catch (error) {
+    logger.error("Get label categories error", {
+      userId: req.user?.id,
+      message: error.message,
     });
     next(error);
   }

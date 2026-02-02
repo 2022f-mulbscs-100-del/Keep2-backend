@@ -1,173 +1,95 @@
-import User from "../../Modals/UserModal.js";
-import bcrypt from "bcrypt";
-import { ErrorHandler } from "../../utils/ErrorHandler.js";
+import { AuthService } from "../../Services/Auth/index.js";
 import { RefreshToken } from "../../utils/GenerateRefreshToken.js";
 import { AccessToken } from "../../utils/GenerateAcessToken.js";
-import axios from "axios";
+import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
-import Auth from "../../Modals/AuthModal.js";
 import { LoginValidation } from "../../validation/authValidation.js";
+import { AUTH_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Login Controller
+ * Handles user login with email and password
+ * Checks for passkey, MFA, and 2FA requirements
+ */
 export const Login = async (req, res, next) => {
   try {
-    //------ validate request body
+    // Validate request body
     const validatedData = LoginValidation.parse(req.body);
-    const { email, password: pass } = validatedData;
+    const { email, password } = validatedData;
 
-    logger.info("params from login controller : ", {
-      email,
-      password: pass ? "****" : undefined,
-    });
+    logger.info("Login attempt", { email });
 
-    // ------ find user by email
-    const user = await User.findOne({
-      where: { email },
-      include: [{ model: Auth, as: "auth" }],
-    });
-    if (!user) {
-      logger.warn("Login failed", { email, reason: "User not found" });
-      return next(ErrorHandler(400, "User not found"));
+    // Verify user credentials
+    const user = await AuthService.verifyCredentials(email, password);
+
+    // Check if email is verified
+    const emailVerified = await AuthService.isEmailVerified(email);
+    if (!emailVerified) {
+      await AuthService.sendEmailVerificationCode(email);
+      logger.warn("Login failed: Email not verified", { email });
+      return res.status(HTTP_STATUS.CREATED).json({
+        message: AUTH_MESSAGES.VERIFY_EMAIL,
+      });
     }
 
-    // ------ get auth record
-    const auth = user.auth;
-    if (!auth) {
-      logger.warn("Login failed", { email, reason: "Auth record not found" });
-      return next(ErrorHandler(400, "Authentication details not found"));
-    }
-
-    // ------ check if email is verified
-    if (auth.signUpConfirmation === false) {
-      const token = Math.floor(100000 + Math.random() * 900000);
-      auth.signUpConfirmationToken = token;
-      const dateObj = new Date(Date.now() + 15 * 60 * 1000);
-      auth.signUpConfirmationTokenExpiry = dateObj.getTime();
-      await user.save();
-      await auth.save();
-
-      try {
-        logger.info("signup token generated for email: ", { email });
-
-        await axios.post(
-          "https://api.brevo.com/v3/smtp/email",
-          {
-            to: [{ email: user.email, name: user.name || "User" }],
-            templateId: 3,
-            params: {
-              code: token,
-            },
-          },
-          {
-            timeout: 10000,
-            headers: {
-              "api-key": process.env.BREVO_API_KEY,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        logger.info("signup code confirmation email sent to: ", { email });
-        logger.warn("Login failed", { email, reason: "Email not verified" });
-        return res.status(201).json({ message: "verify email" });
-      } catch (error) {
-        logger.error("Error sending signup confirmation email to: ", {
-          email: user.email,
-          reason: error.message,
-        });
-        return next(error);
-      }
-    }
-
-    // ------ check for passkey, mfa and 2fa if enable then respond accordingly
+    // Check for passkey, MFA, and 2FA
     if (user.passKeyEnabled === "1") {
-      logger.info("Login attempt with passkey enabled for email: ", { email });
-      return res.status(200).json({ message: "Passkey enabled" });
+      logger.info("Login with passkey required", { email });
+      return res.status(HTTP_STATUS.OK).json({
+        message: AUTH_MESSAGES.PASSKEY_ENABLED,
+      });
     }
 
     if (user.MfaEnabled) {
-      logger.info("Login attempt with MFA enabled for email: ", { email });
-      return res.status(200).json({ message: "MFA enabled" });
+      logger.info("Login with MFA required", { email });
+      return res.status(HTTP_STATUS.OK).json({
+        message: AUTH_MESSAGES.MFA_ENABLED,
+      });
     }
 
     if (user.isTwoFaEnabled) {
-      try {
-        const token = Math.floor(100000 + Math.random() * 900000);
-        auth.twoFaSecret = token;
-        const expiryDate = Date.now() + 10 * 60 * 1000;
-        const dateObj = new Date(expiryDate);
-        auth.isTwoFaVerifiedExpiration = dateObj.getTime();
-        await user.save();
-        await auth.save();
-        logger.info("2FA token generated for email: ", { email });
-        await axios.post(
-          "https://api.brevo.com/v3/smtp/email",
-          {
-            to: [{ email: user.email, name: user.name || "User" }],
-            templateId: 3,
-            params: {
-              code: token,
-            },
-          },
-          {
-            timeout: 10000,
-            headers: {
-              "api-key": process.env.BREVO_API_KEY,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        logger.info("2FA email sent to: ", { email });
-      } catch (error) {
-        logger.error(
-          "Error sending 2FA email to: ",
-          { email },
-          " - ",
-          error.message
-        );
-        return next(error);
-      }
-
-      return res
-        .status(200)
-        .json({ message: "2FA enabled", isTwoFaEnabled: user.isTwoFaEnabled });
+      await AuthService.send2FACode(email);
+      logger.info("2FA code sent", { email });
+      return res.status(HTTP_STATUS.OK).json({
+        message: AUTH_MESSAGES.TWO_FA_ENABLED,
+        isTwoFaEnabled: user.isTwoFaEnabled,
+      });
     }
 
-    // ------ validate password
-    const isPasswordCorrect = await bcrypt.compare(pass, auth.password);
-    if (!isPasswordCorrect) {
-      logger.warn("Login failed for email: ", { email }, " - Invalid Password");
-      return next(ErrorHandler(400, "Invalid Password"));
-    }
-
-    // ------ generate tokens and respond
+    // Generate tokens
     const refreshToken = RefreshToken(user);
     const accessToken = AccessToken(user);
 
-    // ------ prepare user data for response
-    //eslint-disable-next-line
-    const { auth: authData, ...rest } = user.dataValues;
+    // Prepare response (exclude sensitive auth data)
+    // eslint-disable-next-line
+    const { auth: authData, ...userResponse } = user.dataValues;
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", // CSRF protection
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
 
-    logger.info("Login successful for email: ", { email });
-    res.status(200).json({
-      rest,
+    logger.info("Login successful", { email });
+    res.status(HTTP_STATUS.OK).json({
+      user: userResponse,
       accessToken,
     });
   } catch (error) {
     if (error.name === "ZodError") {
-      logger.warn("Login validation failed", { errors: error.errors });
-      return next(ErrorHandler(400, error.errors[0].message));
+      logger.warn("Login validation failed", {
+        errors: error.errors.map((e) => e.message),
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, error.errors[0].message)
+      );
     }
+
     logger.error("Login error", {
       email: req.body?.email,
       message: error.message,
-      errorType: error.name,
     });
     next(error);
   }

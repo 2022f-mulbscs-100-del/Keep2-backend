@@ -1,77 +1,52 @@
-import User from "../../Modals/UserModal.js";
-import { ErrorHandler } from "../../utils/ErrorHandler.js";
+import { UserService } from "../../Services/User/index.js";
 import { logger } from "../../utils/Logger.js";
+import { HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Update Profile Controller
+ * Updates user profile information
+ */
 export const updateProfile = async (req, res, next) => {
-  logger.info("Update profile called in UserController");
-
-  const { profileData } = req.body;
-
-  const {
-    name,
-    profileImage,
-    isTwoFaEnabled,
-    autoLogoutEnabled,
-    autoLogoutTime,
-    MfaEnabled,
-    layout,
-  } = profileData || {};
-  logger.info("params from request body:", { profileData: profileData });
-
-  const userData = req.user;
-
-  logger.info("User data from token:", { userData: userData });
-
   try {
-    const user = await User.findByPk(userData.id);
-    if (!user) {
-      logger.error("user not found", { userId: userData.id });
-      return next(ErrorHandler(404, "not found"));
-    }
-    if (name || profileImage) {
-      if (name !== undefined) {
-        user.name = name;
-        logger.info("Name updated", { name: name });
-      }
-      if (profileImage !== undefined) {
-        user.profileImage = profileImage;
-        logger.info("Profile image updated", { profileImage: profileImage });
-      }
-    }
-    if (isTwoFaEnabled !== undefined) {
-      user.isTwoFaEnabled = isTwoFaEnabled;
-      logger.info("Two FA status updated", { isTwoFaEnabled: isTwoFaEnabled });
-    }
-    if (layout) {
-      user.layout = layout;
-      logger.info("Layout updated", { layout: layout });
-    }
-    if (autoLogoutEnabled !== undefined) {
-      user.autoLogoutEnabled = autoLogoutEnabled;
-      logger.info("Auto logout status updated", {
-        autoLogoutEnabled: autoLogoutEnabled,
-      });
-    }
-    if (autoLogoutTime !== undefined) {
-      user.autoLogoutTime = autoLogoutTime;
-      logger.info("Auto logout time updated", {
-        autoLogoutTime: autoLogoutTime,
-      });
-    }
+    const { id: userId } = req.user;
+    const { profileData } = req.body;
+
+    const {
+      name,
+      profileImage,
+      isTwoFaEnabled,
+      autoLogoutEnabled,
+      autoLogoutTime,
+      MfaEnabled,
+      layout,
+    } = profileData || {};
+
+    logger.info("Update profile request", { userId, profileData });
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
+    if (isTwoFaEnabled !== undefined)
+      updateData.isTwoFaEnabled = isTwoFaEnabled;
+    if (layout !== undefined) updateData.layout = layout;
+    if (autoLogoutEnabled !== undefined)
+      updateData.autoLogoutEnabled = autoLogoutEnabled;
+    if (autoLogoutTime !== undefined)
+      updateData.autoLogoutTime = autoLogoutTime;
     if (MfaEnabled !== undefined) {
-      user.MfaEnabled = MfaEnabled;
-      user.MfaSeceret = null;
-      logger.info("MFA status updated", { MfaEnabled: MfaEnabled });
+      updateData.MfaEnabled = MfaEnabled;
+      updateData.MfaSeceret = null;
     }
-    await user.save();
-    //eslint-disable-next-line
-    const { password, ...rest } = user.dataValues;
-    res.status(200).json(rest);
-    logger.info("User profile updated successfully", { rest: rest });
+
+    const updatedUser = await UserService.updateUserProfile(userId, updateData);
+
+    logger.info("User profile updated successfully", { userId });
+
+    res.status(HTTP_STATUS.OK).json(updatedUser);
   } catch (error) {
-    logger.error("Error updating user profile", {
-      userId: userData.id,
-      error: error.message,
+    logger.error("Update profile error", {
+      userId: req.user?.id,
+      message: error.message,
     });
     next(error);
   }

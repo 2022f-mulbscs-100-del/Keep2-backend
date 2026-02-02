@@ -1,28 +1,49 @@
-import Notes from "../../Modals/notes.modal.js";
+import { NotesService } from "../../Services/Notes/index.js";
 import { logger } from "../../utils/Logger.js";
 import { createNoteValidation } from "../../validation/NotesValidation.js";
+import { HTTP_STATUS } from "../../Constants/messages.js";
+import { ErrorHandler } from "../../utils/ErrorHandler.js";
 
+/**
+ * Create Note Controller
+ * Creates a new note for the authenticated user
+ */
 export const createNote = async (req, res, next) => {
-  const { id: userId } = req.user;
-  logger.info("createNote called with userId: ", { userId });
-  const { title, description, pinned, catgeory, list } =
-    createNoteValidation.parse(req.body);
   try {
-    logger.info("addNotes called with: ", { userId, title });
-    const newNote = await Notes.create({
+    const { id: userId } = req.user;
+
+    // Validate request body
+    const { title, description, pinned, catgeory, list } =
+      createNoteValidation.parse(req.body);
+
+    logger.info("Create note request", { userId, title });
+
+    // Create note using service
+    const newNote = await NotesService.createNote(userId, {
       title,
       description,
       pinned,
-      isDeleted: false,
-      isArchived: false,
-      userId,
       category: catgeory,
       list: list || [],
     });
-    logger.info("Note added successfully for userId: ", userId);
-    res.json(newNote);
+
+    logger.info("Note created successfully", { userId, noteId: newNote.id });
+
+    res.status(HTTP_STATUS.CREATED).json(newNote);
   } catch (error) {
+    if (error.name === "ZodError") {
+      logger.warn("Create note validation failed", {
+        errors: error.errors.map((e) => e.message),
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, error.errors[0].message)
+      );
+    }
+
+    logger.error("Create note error", {
+      userId: req.user?.id,
+      message: error.message,
+    });
     next(error);
-    logger.error("addNotes error: ", { error: error.message });
   }
 };

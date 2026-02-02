@@ -1,81 +1,58 @@
-import User from "../../Modals/UserModal.js";
-import bcrypt from "bcrypt";
+import { AuthService } from "../../Services/Auth/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import axios from "axios";
 import { logger } from "../../utils/Logger.js";
 import { SignUpValidation } from "../../validation/authValidation.js";
+import { AUTH_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 import Subscription from "../../Modals/SubscriptionModal.js";
 
+/**
+ * Sign Up Controller
+ * Handles new user registration
+ */
 export const SignUp = async (req, res, next) => {
-  //------ validate request body
-  const validateData = SignUpValidation.parse(req.body);
-
-  const { name, email, password: preHashPassword } = validateData;
-
-  logger.info("params from signup controller : ", { name, email });
-
   try {
-    // ------ check if user already exists
-    const checkUser = await User.findOne({
-      where: { email },
-    });
-    if (checkUser) {
-      logger.warn("Signup failed", { email, reason: "User already exist" });
-      return next(ErrorHandler(400, "User already exist"));
+    // Validate request body
+    const validateData = SignUpValidation.parse(req.body);
+    const { name, email, password } = validateData;
+
+    logger.info("Sign up attempt", { name, email });
+
+    // Check if user already exists
+    const userExists = await AuthService.userExists(email);
+    if (userExists) {
+      logger.warn("Sign up failed: User already exists", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.USER_EXISTS)
+      );
     }
 
-    // ------ create new user
-    const hashPassword = await bcrypt.hash(preHashPassword, 10);
+    // Create new user and auth record
+    const user = await AuthService.createUser(name, email, password);
 
-    const user = await User.create({
-      name,
-      email,
-    });
-    // ------ create auth record and subscription
-    const auth = await user.createAuth({ password: hashPassword });
-
+    // Create default subscription
     await Subscription.create({ userId: user.id });
 
-    // ------ generate signup confirmation token and send email
-    const token = Math.floor(100000 + Math.random() * 900000);
-    auth.signUpConfirmationToken = token;
-    const dateObj = new Date(Date.now() + 15 * 60 * 1000);
-    auth.signUpConfirmationTokenExpiry = dateObj.getTime();
+    // Send email verification code
+    await AuthService.sendEmailVerificationCode(email);
 
-    await auth.save();
+    logger.info("Sign up successful, verification email sent", { email });
 
-    logger.info("signup token generated for email: ", { email });
-
-    // ------ send signup confirmation email
-    await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      {
-        to: [{ email: user.email, name: user.name || "User" }],
-        templateId: 3,
-        params: {
-          code: token,
-        },
-      },
-      {
-        timeout: 10000,
-        headers: {
-          "api-key": process.env.BREVO_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    logger.info("signup code confirmation email sent to: ", { email });
-
-    return res.status(201).json({ message: "verify email" });
+    return res.status(HTTP_STATUS.CREATED).json({
+      message: AUTH_MESSAGES.VERIFY_EMAIL,
+    });
   } catch (error) {
     if (error.name === "ZodError") {
-      logger.warn("Login validation failed", { errors: error.errors });
-      return next(ErrorHandler(400, error.errors[0].message));
+      logger.warn("Sign up validation failed", {
+        errors: error.errors.map((e) => e.message),
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, error.errors[0].message)
+      );
     }
-    logger.error("Login error", {
+
+    logger.error("Sign up error", {
       email: req.body?.email,
       message: error.message,
-      errorType: error.name,
     });
     return next(error);
   }
