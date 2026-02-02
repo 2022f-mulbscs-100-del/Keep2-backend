@@ -1,45 +1,33 @@
-import { Op } from "sequelize";
-import Notes from "../../Modals/notes.modal.js";
+import { NotesService } from "../../Services/Notes/index.js";
 import { logger } from "../../utils/Logger.js";
-import User from "../../Modals/UserModal.js";
-import Collaborators from "../../Modals/collaborators.modal.js";
+import { HTTP_STATUS } from "../../Constants/messages.js";
 
-export const getNotes = async (req, res) => {
-  const { id: userId } = req.user;
-  logger.info("Fetching notes", { userId, user: req.user });
-  logger.info("Fetching notes for userId: ", { userId });
-  const user = await User.findByPk(userId);
+/**
+ * Get Notes Controller
+ * Retrieves all notes for the authenticated user (owned and collaborated)
+ */
+export const getNotes = async (req, res, next) => {
+  try {
+    const { id: userId } = req.user;
 
-  if (!user) {
-    logger.error("User not found for userId: ", { userId });
-    return res.status(404).json({ message: "User not found" });
+    logger.info("Get notes request", { userId });
+
+    // Fetch all notes (owned and collaborated) using service
+    const allNotes = await NotesService.getNotesByUserId(userId);
+
+    logger.info("Notes fetched successfully", {
+      userId,
+      noteCount: allNotes.length,
+    });
+
+    res.status(HTTP_STATUS.OK).json(allNotes);
+  } catch (error) {
+    logger.error("Get notes error", {
+      userId: req.user?.id,
+      message: error.message,
+    });
+    next(error);
   }
-  const collaboratorNotes = await Collaborators.findAll({
-    where: { collaborator: user.email },
-    attributes: ["noteId"],
-  });
-
-  const allNotes = await Notes.findAll({
-    where: {
-      [Op.or]: [
-        { userId: userId },
-        { id: { [Op.in]: collaboratorNotes.map((note) => note.noteId) } },
-      ],
-    },
-    include: [
-      {
-        model: Collaborators,
-        as: "collaborators",
-      },
-    ],
-    order: [["createdAt", "DESC"]],
-  });
-  logger.info("Notes fetched successfully for userId: ", {
-    userId,
-    noteCount: allNotes.length,
-  });
-
-  res.json(allNotes);
 };
 
 // 4️⃣ How [Op.in] uses it

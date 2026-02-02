@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.confing";
+import { sequelize } from "../config/db.config.js";
 
 const DeletedNotes = sequelize.define(
   "DeletedNotes",

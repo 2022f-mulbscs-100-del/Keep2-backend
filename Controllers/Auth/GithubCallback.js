@@ -1,92 +1,99 @@
 import passport from "passport";
 import { logger } from "../../utils/Logger.js";
 import { RefreshToken } from "../../utils/GenerateRefreshToken.js";
-import axios from "axios";
 import { AccessToken } from "../../utils/GenerateAcessToken.js";
+import { AuthService } from "../../Services/Auth/index.js";
 import Stripe from "stripe";
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+/**
+ * GitHub Callback Controller
+ * Handles GitHub OAuth callback and creates/authenticates user
+ */
 export const GithubCallback = (req, res, next) => {
-  //------ authenticate with passport github strategy
+  logger.info("GitHub callback initiated");
+
+  // Authenticate with passport github strategy
   passport.authenticate(
     "github",
     { session: false, failureRedirect: "/" },
     async (err, user) => {
       if (err) {
-        logger.error("githubCallback error", { error: err.message });
+        logger.error("GitHub callback error", { error: err.message });
         return next(err);
       }
 
-      // ------ check if user exists
       if (!user) {
+        logger.warn("GitHub callback: User not authenticated");
         return res.redirect("/");
       }
 
-      // ------ create Stripe customer if not exists
-      if (!user.stripeCustomerId) {
-        await stripe.customers
-          .create({
-            email: user.email,
-            name: user.name,
-          })
-          .then(async (customer) => {
+      try {
+        // Create Stripe customer if not exists
+        if (!user.stripeCustomerId) {
+          try {
+            const customer = await stripe.customers.create({
+              email: user.email,
+              name: user.name,
+            });
+
             user.stripeCustomerId = customer.id;
             await user.save();
-          })
-          .catch((stripeErr) => {
+            logger.info("Stripe customer created", { email: user.email });
+          } catch (stripeErr) {
             logger.error("Stripe customer creation failed", {
               error: stripeErr.message,
             });
-          });
-      }
-
-      // ------ generate tokens
-      const refreshToken = RefreshToken(user);
-      const accessToken = AccessToken(user);
-
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // HTTPS only in production
-        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", // CSRF protection
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: "/",
-      });
-
-      res.send(`
-        <html>
-          <body>
-            <script>
-              // Send user info to opener
-              window.opener.postMessage(
-                {
-                  token: "${accessToken}",
-                  user: ${JSON.stringify({ email: user.email, name: user.name })}
-                },
-                "${process.env.FRONTEND_URL}" // your frontend origin
-              );
-              window.close(); // close the popup
-            </script>
-            <p>Logging in...</p>
-          </body>
-        </html>
-      `);
-      await axios.post(
-        "https://api.brevo.com/v3/smtp/email",
-        {
-          to: [{ email: user.email, name: user.name || "User" }],
-          templateId: 1,
-          params: {
-            name: user.name || "User",
-          },
-        },
-        {
-          timeout: 10000,
-          headers: {
-            "api-key": process.env.BREVO_API_KEY,
-            "Content-Type": "application/json",
-          },
+          }
         }
-      );
+
+        // Generate tokens
+        const refreshToken = RefreshToken(user);
+        const accessToken = AccessToken(user);
+
+        res.cookie("refreshToken", refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: "/",
+        });
+
+        logger.info("GitHub login successful", { email: user.email });
+
+        // Send welcome email
+        await AuthService.sendWelcomeEmail(user.email, user.name);
+
+        // Respond with token via postMessage
+        res.send(`
+          <html>
+            <body>
+              <script>
+                window.opener.postMessage(
+                  {
+                    token: "${accessToken}",
+                    user: ${JSON.stringify({
+                      id: user.id,
+                      email: user.email,
+                      name: user.name,
+                    })}
+                  },
+                  "${process.env.FRONTEND_URL}"
+                );
+                window.close();
+              </script>
+              <p>Logging in...</p>
+            </body>
+          </html>
+        `);
+      } catch (error) {
+        logger.error("GitHub callback error", {
+          email: user.email,
+          message: error.message,
+        });
+        next(error);
+      }
     }
   )(req, res, next);
 };

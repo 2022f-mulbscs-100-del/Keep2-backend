@@ -1,33 +1,53 @@
-import Auth from "../../Modals/AuthModal.js";
-import User from "../../Modals/UserModal.js";
+import { AuthService } from "../../Services/Auth/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
+import { logger } from "../../utils/Logger.js";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
+import { HTTP_STATUS, AUTH_MESSAGES } from "../../Constants/messages.js";
+
+/**
+ * Passkey Registration Verification Controller
+ * Verifies WebAuthn passkey registration response
+ */
 export const passKeyRegistrationVerification = async (req, res, next) => {
-  const { id } = req.user;
-
-  //------ validate request body
-  const { attestationResponse } = req.body;
-
   try {
-    // ------ find user by id
-    const user = await User.findByPk(id, {
-      include: [{ model: Auth, as: "auth" }],
-    });
+    const { id } = req.user;
+    const { attestationResponse } = req.body;
 
+    logger.info("Passkey registration verification", { userId: id });
+
+    // Get user with auth record
+    const user = await AuthService.getUserById(id);
     if (!user) {
-      return next(ErrorHandler(404, "User not found"));
+      logger.warn("Passkey verification failed: User not found", {
+        userId: id,
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.NOT_FOUND, AUTH_MESSAGES.USER_NOT_FOUND)
+      );
     }
 
-    // ------ get auth record
+    // Get auth record and challenge
     const auth = user.auth;
-
     if (!auth) {
-      return next(ErrorHandler(400, "Authentication details not found"));
+      logger.warn("Passkey verification failed: Auth record not found", {
+        userId: id,
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.AUTH_NOT_FOUND)
+      );
     }
-    // ------ verify passkey registration response
 
     const challenge = auth.challenge;
+    if (!challenge) {
+      logger.warn("Passkey verification failed: No challenge found", {
+        userId: id,
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.INVALID_CHALLENGE)
+      );
+    }
 
+    // Verify passkey registration response
     const { verified, registrationInfo } = await verifyRegistrationResponse({
       response: attestationResponse,
       expectedChallenge: challenge,
@@ -37,20 +57,30 @@ export const passKeyRegistrationVerification = async (req, res, next) => {
     });
 
     if (!verified) {
-      return next(ErrorHandler(400, "Passkey verification failed"));
+      logger.warn("Passkey verification failed: Invalid attestation", {
+        userId: id,
+      });
+      return next(
+        ErrorHandler(
+          HTTP_STATUS.BAD_REQUEST,
+          AUTH_MESSAGES.PASSKEY_VERIFICATION_FAILED
+        )
+      );
     }
 
-    auth.passkeyCredentialID = registrationInfo.id;
-    auth.passkeyPublicKey = registrationInfo.publicKey;
-    user.passKeyEnabled = true;
-    auth.challenge = null;
-    await auth.save();
-    await user.save();
+    // Store passkey credentials
+    await AuthService.storePasskeyCredentials(id, registrationInfo);
 
-    res.status(200).json({
-      message: "Passkey registered successfully",
+    logger.info("Passkey registered successfully", { userId: id });
+
+    res.status(HTTP_STATUS.OK).json({
+      message: AUTH_MESSAGES.PASSKEY_REGISTERED_SUCCESS,
     });
   } catch (error) {
+    logger.error("Passkey registration verification error", {
+      userId: req.user?.id,
+      message: error.message,
+    });
     next(error);
   }
 };

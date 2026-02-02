@@ -1,53 +1,56 @@
-import User from "../../Modals/UserModal.js";
+import { AuthService } from "../../Services/Auth/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import { checkExpiration } from "../../utils/CheckExpiration.js";
 import { logger } from "../../utils/Logger.js";
-import Auth from "../../Modals/AuthModal.js";
 import { CodeCheck as codeCheckValidation } from "../../validation/authValidation.js";
+import { AUTH_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Code Check Controller
+ * Verifies password reset token is valid
+ */
 export const CodeCheck = async (req, res, next) => {
-  //------ validate request body
-  const validateData = codeCheckValidation.parse(req.body);
-
-  const { code, email } = validateData;
-
-  logger.info("CodeCheck called with: ", { email });
   try {
-    // ------ find user by email
-    const user = await User.findOne({
-      where: { email },
-      include: [{ model: Auth, as: "auth" }],
-    });
+    // Validate request body
+    const validateData = codeCheckValidation.parse(req.body);
+    const { code, email } = validateData;
+
+    logger.info("Code check request", { email });
+
+    // Check if user exists
+    const user = await AuthService.getUserByEmail(email);
     if (!user) {
-      logger.warn("CodeCheck failed: User not found for email: ", email);
-      return next(ErrorHandler(404, "User not found"));
+      logger.warn("Code check failed: User not found", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.NOT_FOUND, AUTH_MESSAGES.USER_NOT_FOUND)
+      );
     }
 
-    // ------ get auth record
-    const auth = user.auth;
-
-    // ------ verify code
-    if (auth.resetPasswordToken === code) {
-      if (checkExpiration(auth.resetPasswordExpiry)) {
-        logger.info("CodeCheck token verified successfully for email: ", email);
-        res.status(200).json("Token verified sucessfully");
-      } else {
-        logger.warn("CodeCheck token expired for email: ", email);
-        res.status(400).json("Token expired");
-      }
-    } else {
-      logger.warn("CodeCheck invalid token for email: ", email);
-      res.status(400).json("Invalid token");
+    // Verify reset password token
+    const isValid = await AuthService.verifyPasswordResetToken(email, code);
+    if (!isValid) {
+      logger.warn("Code check failed: Invalid or expired token", { email });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: AUTH_MESSAGES.INVALID_RESET_TOKEN,
+      });
     }
+
+    logger.info("Code check successful", { email });
+    res.status(HTTP_STATUS.OK).json({
+      message: AUTH_MESSAGES.TOKEN_VERIFIED,
+    });
   } catch (error) {
     if (error.name === "ZodError") {
-      logger.warn("Login validation failed", { errors: error.errors });
-      return next(ErrorHandler(400, error.errors[0].message));
+      logger.warn("Code check validation failed", {
+        errors: error.errors.map((e) => e.message),
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, error.errors[0].message)
+      );
     }
-    logger.error("Login error", {
+
+    logger.error("Code check error", {
       email: req.body?.email,
       message: error.message,
-      errorType: error.name,
     });
     next(error);
   }

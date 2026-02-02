@@ -1,80 +1,78 @@
-import User from "../../Modals/UserModal.js";
-import { ErrorHandler } from "../../utils/ErrorHandler.js";
+import { AuthService } from "../../Services/Auth/index.js";
 import { RefreshToken } from "../../utils/GenerateRefreshToken.js";
 import { AccessToken } from "../../utils/GenerateAcessToken.js";
+import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
-import Auth from "../../Modals/AuthModal.js";
 import { MFAValidation } from "../../validation/authValidation.js";
+import { AUTH_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Two FA Login Controller
+ * Completes login after 2FA verification
+ */
 export const TwoFaLogin = async (req, res, next) => {
-  //------ validate request body
-  const { email, twoFaCode } = MFAValidation.parse(req.body);
-
-  logger.info("TwoFaLogin called with: ", { email });
-
   try {
-    // ------ find user by email
-    const user = await User.findOne({
-      where: { email },
-      include: [{ model: Auth, as: "auth" }],
-    });
+    // Validate request body
+    const { email, twoFaCode } = MFAValidation.parse(req.body);
 
+    logger.info("2FA login request", { email });
+
+    // Check if user exists
+    const user = await AuthService.getUserByEmail(email);
     if (!user) {
-      logger.warn("TwoFaLogin failed: User not found for email: ", email);
-      return next(ErrorHandler(400, "User not found"));
+      logger.warn("2FA login failed: User not found", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.USER_NOT_FOUND)
+      );
     }
 
-    // ------ get auth record
-    const auth = user.auth;
-
-    // ------ verify 2FA code
-    if (auth.twoFaSecret != twoFaCode) {
-      logger.warn("TwoFaLogin failed: Invalid 2FA code for email: ", email);
-      return next(ErrorHandler(400, "Invalid 2FA Code"));
+    // Verify 2FA code
+    const isValid = await AuthService.verify2FACode(email, twoFaCode);
+    if (!isValid) {
+      logger.warn("2FA login failed: Invalid 2FA code", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.INVALID_2FA_CODE)
+      );
     }
 
-    logger.info("TwoFaLogin verified for email: ", email);
+    // Clear 2FA code after verification
+    await AuthService.clear2FACode(email);
 
-    auth.twoFaSecret = null;
-    auth.isTwoFaVerifiedExpiration = null;
-
-    await user.save();
-    await auth.save();
-
-    logger.info("TwoFaLogin successful for email: ", email);
-
-    // ------ generate tokens
+    // Generate tokens
     const refreshToken = RefreshToken(user);
     const accessToken = AccessToken(user);
 
-    const { rest } = user.dataValues;
+    // Prepare response (exclude sensitive auth data)
+    // eslint-disable-next-line
+    const { auth: authData, ...userResponse } = user.dataValues;
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none", // CSRF protection
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
 
-    logger.info(
-      "Refresh token generated and cookie set for TwoFaLogin for email: ",
-      refreshToken
-    );
+    logger.info("2FA login successful", { email });
 
-    res.status(200).json({
-      rest,
+    res.status(HTTP_STATUS.OK).json({
+      user: userResponse,
       accessToken,
     });
   } catch (error) {
     if (error.name === "ZodError") {
-      logger.warn("Login validation failed", { errors: error.errors });
-      return next(ErrorHandler(400, error.errors[0].message));
+      logger.warn("2FA login validation failed", {
+        errors: error.errors.map((e) => e.message),
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, error.errors[0].message)
+      );
     }
-    logger.error("Login error", {
+
+    logger.error("2FA login error", {
       email: req.body?.email,
       message: error.message,
-      errorType: error.name,
     });
     next(error);
   }

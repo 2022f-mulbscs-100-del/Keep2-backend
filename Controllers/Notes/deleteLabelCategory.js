@@ -1,25 +1,47 @@
-import LabelCategories from "../../Modals/label_categories.modal.js";
+import { NotesService } from "../../Services/Notes/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
+import { NOTE_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Delete Label Category Controller
+ * Deletes a label category
+ */
 export const deleteLabelCategory = async (req, res, next) => {
-  const { id: userId } = req.user;
-  logger.info("deleteLabelCategory called with userId: ", { userId });
   try {
+    const { id: userId } = req.user;
     const { id } = req.params;
-    logger.info("deleteLabelCategory called with: ", {
-      userId,
-      id,
-    });
-    const label = await LabelCategories.findByPk(id);
+
+    logger.info("Delete label category request", { userId, categoryId: id });
+
+    // Check if label exists
+    const label = await NotesService.getLabelCategoryById(id);
     if (!label) {
-      return next(ErrorHandler(404, "Label Category not found"));
+      logger.warn("Delete failed: Label category not found", {
+        categoryId: id,
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.NOT_FOUND, NOTE_MESSAGES.LABEL_NOT_FOUND)
+      );
     }
-    await label.destroy();
-    logger.info("Label Category deleted successfully for userId: ", userId);
-    res.json({ message: "Label Category deleted successfully" });
+
+    // Delete label category using service
+    await NotesService.deleteLabelCategory(id);
+
+    logger.info("Label category deleted successfully", {
+      userId,
+      categoryId: id,
+    });
+
+    res.status(HTTP_STATUS.OK).json({
+      message: NOTE_MESSAGES.LABEL_DELETED_SUCCESS,
+    });
   } catch (error) {
+    logger.error("Delete label category error", {
+      userId: req.user?.id,
+      categoryId: req.params?.id,
+      message: error.message,
+    });
     next(error);
-    logger.error("deleteLabelCategory error: ", { error: error.message });
   }
 };

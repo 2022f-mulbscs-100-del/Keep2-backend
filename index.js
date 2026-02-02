@@ -1,7 +1,7 @@
 import express from "express";
 import NoteRoute from "./Routes/NotesRoute.js";
 import dotenv from "dotenv";
-import { authenticateDB } from "./config/db.confing.js";
+import { authenticateDB } from "./config/db.config.js";
 import cors from "cors";
 import { logger } from "./utils/Logger.js";
 import Sandboxroute from "./Routes/Sandbox.js";

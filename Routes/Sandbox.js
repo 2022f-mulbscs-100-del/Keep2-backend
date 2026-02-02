@@ -12,14 +12,17 @@ const Sandboxroute = express.Router();
 logger.info("SandboxRoute initialized");
 
 Sandboxroute.use(GeneralRateLimiter);
+
 /**
  * @swagger
  * /generateSandbox:
  *   post:
- *     summary: Generate sandbox data
- *     description: Generate sandbox data for the authenticated user.
+ *     summary: Generate sandbox test data
+ *     description: Generate sandbox data for testing purposes for the authenticated user.
  *     tags:
  *       - Sandbox
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -30,19 +33,61 @@ Sandboxroute.use(GeneralRateLimiter);
  *               - userID
  *               - count
  *             properties:
- *               count:
- *                 type: number
  *               userID:
  *                 type: string
- *     security:
- *       - bearerAuth: []
+ *                 description: User ID for which to generate sandbox data
+ *               count:
+ *                 type: number
+ *                 description: Number of sandbox records to generate
+ *             example:
+ *               userID: "user123"
+ *               count: 10
  *     responses:
  *       200:
  *         description: Sandbox data generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: number
+ *       400:
+ *         description: Invalid input parameters
  *       401:
  *         description: Unauthorized - Invalid or missing token
+ *       500:
+ *         description: Internal server error
  */
-
 Sandboxroute.post("/generateSandbox", VerifyToken, generateSandbox);
+
+/**
+ * @swagger
+ * /deleteSandbox:
+ *   delete:
+ *     summary: Delete sandbox test data
+ *     description: Delete all sandbox test data for the authenticated user.
+ *     tags:
+ *       - Sandbox
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Sandbox data deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       500:
+ *         description: Internal server error
+ */
 Sandboxroute.delete("/deleteSandbox", VerifyToken, deleteSandbox);
+
 export default Sandboxroute;

@@ -1,68 +1,46 @@
-import Collaborators from "../../Modals/collaborators.modal.js";
-import axios from "axios";
-import User from "../../Modals/UserModal.js";
-import Notes from "../../Modals/notes.modal.js";
-import { ErrorHandler } from "../../utils/ErrorHandler.js";
+import { CollaboratorsService } from "../../Services/Collaborators/index.js";
+import { logger } from "../../utils/Logger.js";
+import {
+  HTTP_STATUS,
+  COLLABORATOR_MESSAGES,
+} from "../../Constants/messages.js";
 
+/**
+ * Add Collaborator Controller
+ * Adds a collaborator to a note and sends notification email
+ */
 export const addCollaborator = async (req, res, next) => {
-  const { id } = req.user;
-  const { noteId, collaborator, role } = req.body;
-
   try {
-    const user = await User.findOne({ where: { email: collaborator } });
-    if (!user) {
-      return next(ErrorHandler(404, "Collaborator user not found"));
-    }
-    const owner = await User.findByPk(id);
-    if (!owner) {
-      return next(ErrorHandler(404, "Owner user not found"));
-    }
+    const { id: userId } = req.user;
+    const { noteId, collaborator, role } = req.body;
 
-    const newCollaborator = await Collaborators.create({
+    logger.info("Add collaborator request", {
+      userId,
       noteId,
-      userId: user.id,
       collaborator,
-      role: role || "viewer",
+      role,
     });
 
-    const note = await Notes.findByPk(noteId);
-    note.OwnerAttributes = {
-      id: owner.id,
-      email: owner.email,
-      name: owner.name,
-    };
-    await note.save();
+    const newCollaborator =
+      await CollaboratorsService.addCollaboratorWithNotification(
+        userId,
+        noteId,
+        collaborator,
+        role || "viewer"
+      );
 
-    console.log("Sending email to collaborator:", newCollaborator);
-    axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      {
-        to: [{ email: collaborator }],
-        templateId: 5,
-        params: {
-          noteLink: `${process.env.FRONTEND_URL}/notes/${noteId}`,
-          email: collaborator,
-        },
-      },
-      {
-        headers: {
-          "api-key": process.env.BREVO_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    logger.info("Collaborator added successfully", { noteId, collaborator });
 
-    res.status(201).json({
-      message: "Collaborator added successfully",
+    res.status(HTTP_STATUS.CREATED).json({
+      message: COLLABORATOR_MESSAGES.COLLABORATOR_ADDED,
       collaborator: newCollaborator,
     });
   } catch (error) {
+    logger.error("Add collaborator error", {
+      userId: req.user?.id,
+      noteId: req.body?.noteId,
+      message: error.message,
+    });
     next(error);
   }
 };
-
-// noteLink
-
-// have to create duplicate note in collaborator's account
-// send email to collaborator with note link
-// when add collaborator have to add owner id in note

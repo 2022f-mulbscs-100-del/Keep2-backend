@@ -1,51 +1,50 @@
-import Notes from "../../Modals/notes.modal.js";
-import RemainderNotes from "../../Modals/RemainderNotes.modal.js";
+import { NotesService } from "../../Services/Notes/index.js";
 import { logger } from "../../utils/Logger.js";
+import { ErrorHandler } from "../../utils/ErrorHandler.js";
+import { NOTE_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Create Reminder Controller
+ * Creates a reminder for a specific note
+ */
 export const remindersNotes = async (req, res, next) => {
-  const { id: userId } = req.user;
-  const { noteId, title, date, time, repeat } = req.body;
-  logger.info("remindersNotes called with userId: ", {
-    userId,
-    noteId,
-    title,
-    repeat,
-  });
   try {
-    const note = await Notes.findByPk(noteId);
+    const { id: userId } = req.user;
+    const { noteId, title, date, time, repeat } = req.body;
+
+    logger.info("Create reminder request", { userId, noteId, title, repeat });
+
+    // Check if note exists
+    const note = await NotesService.getNoteById(noteId);
     if (!note) {
-      logger.warn("Note not found for reminder creation", { noteId, userId });
-      return res.status(404).json({ message: "Note not found" });
+      logger.warn("Reminder creation failed: Note not found", {
+        noteId,
+        userId,
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.NOT_FOUND, NOTE_MESSAGES.NOTE_NOT_FOUND)
+      );
     }
 
-    const reminderDate = new Date(date);
-    logger.info("Reminder date parsed", {
-      reminderDate: reminderDate.toISOString(),
+    // Create reminder using service
+    const reminderNote = await NotesService.createReminder(userId, noteId, {
+      title,
+      date,
+      time,
+      repeat,
     });
 
-    const reminderNote = await RemainderNotes.create({
-      noteId,
-      userId,
-      reminderTitle: title,
-      remainderTime: time,
-      repeatReminder: repeat,
-      nextReminderDate: reminderDate.toISOString(),
-      reminderStatus: false,
-    });
-    note.hasReminder = true;
-    await note.save();
-    //  const reminders = await RemainderNotes.findAll({ where: { userId } ,include:[{
-    logger.info("Reminder Note created successfully for userId: ", {
+    logger.info("Reminder created successfully", {
       userId,
       reminderId: reminderNote.id,
     });
-    res.json(reminderNote);
-    // res.json(reminders);
+
+    res.status(HTTP_STATUS.CREATED).json(reminderNote);
   } catch (error) {
-    logger.error("remindersNotes error: ", {
-      userId,
-      noteId,
-      error: error.message,
+    logger.error("Create reminder error", {
+      userId: req.user?.id,
+      noteId: req.body?.noteId,
+      message: error.message,
     });
     next(error);
   }

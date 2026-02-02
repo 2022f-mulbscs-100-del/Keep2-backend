@@ -1,94 +1,90 @@
-import bcrypt from "bcrypt";
+import { AuthService } from "../../Services/Auth/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import { checkExpiration } from "../../utils/CheckExpiration.js";
 import { logger } from "../../utils/Logger.js";
-import User from "../../Modals/UserModal.js";
-import Auth from "../../Modals/AuthModal.js";
 import { ResetPasswordValidation } from "../../validation/authValidation.js";
+import { AUTH_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Reset Password Controller
+ * Resets user password either through token or current password verification
+ */
 export const resetPassword = async (req, res, next) => {
-  //------ validate request body
-  const validatedData = ResetPasswordValidation.parse(req.body);
-
-  const { email, password: preHashPassword, code } = validatedData;
-
-  const { resetThroughToken, currentPassword } = req.body;
-
-  logger.info("resetPassword called with: ", { email, resetThroughToken });
-
-  //------ check if token is required
-  if (resetThroughToken) {
-    //------ validate code presence
-
-    if (!code) {
-      logger.warn("resetPassword failed: token is missing for email: ", email);
-      return next(ErrorHandler(400, "token is missing"));
-    }
-  }
-
   try {
-    // ------ find user by email
-    const checkUser = await User.findOne({
-      where: { email },
-      include: [{ model: Auth, as: "auth" }],
-    });
+    // Validate request body
+    const validatedData = ResetPasswordValidation.parse(req.body);
+    const { email, password, code } = validatedData;
+    const { resetThroughToken, currentPassword } = req.body;
 
-    if (!checkUser) {
-      logger.warn("resetPassword failed: User not found for email: ", email);
-      return next(ErrorHandler(400, "User not found"));
-    }
+    logger.info("Reset password request", { email, resetThroughToken });
 
-    // ------ get auth record
-    const auth = checkUser.auth;
-
-    if (resetThroughToken) {
-      if (auth.resetPasswordToken !== code) {
-        logger.warn("resetPassword failed: Invalid token for email: ", email);
-        return next(ErrorHandler(400, "Invalid token"));
-      }
-      if (!checkExpiration(auth.resetPasswordExpiry)) {
-        logger.warn("resetPassword token expired for email: ", email);
-        return next(ErrorHandler(400, "Token expired"));
-      }
-    }
-
-    // ------ if not reset through token, validate current password
-    if (!resetThroughToken) {
-      const isPasswordCorrect = await bcrypt.compare(
-        currentPassword,
-        auth.password
+    // Check if token is required but missing
+    if (resetThroughToken && !code) {
+      logger.warn("Reset password failed: Token missing", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.TOKEN_MISSING)
       );
-
-      // ------ if current password is incorrect, return error
-      if (!isPasswordCorrect) {
-        logger.warn(
-          "resetPassword failed: Invalid current password for email: ",
-          email
-        );
-
-        return next(ErrorHandler(400, "Invalid Current Password"));
-      }
-      logger.info("resetPassword current password verified for email: ", email);
     }
-    // ------ hash new password and update
-    const hashPassword = await bcrypt.hash(preHashPassword, 10);
-    await Auth.update(
-      { password: hashPassword },
-      { where: { userId: auth.userId } }
-    );
 
-    logger.info("resetPassword successfully updated for email: ", email);
-    res.status(200).json("Password Updated");
+    // Check if user exists
+    const user = await AuthService.getUserByEmail(email);
+    if (!user) {
+      logger.warn("Reset password failed: User not found", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.USER_NOT_FOUND)
+      );
+    }
+
+    // Verify token if resetting through token
+    if (resetThroughToken) {
+      const isValid = await AuthService.verifyPasswordResetToken(email, code);
+      if (!isValid) {
+        logger.warn("Reset password failed: Invalid or expired token", {
+          email,
+        });
+        return next(
+          ErrorHandler(
+            HTTP_STATUS.BAD_REQUEST,
+            AUTH_MESSAGES.INVALID_RESET_TOKEN
+          )
+        );
+      }
+    } else {
+      // Verify current password if resetting without token
+      const isValid = await AuthService.verifyCredentials(
+        email,
+        currentPassword
+      );
+      if (!isValid) {
+        logger.warn("Reset password failed: Invalid current password", {
+          email,
+        });
+        return next(
+          ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.INVALID_PASSWORD)
+        );
+      }
+    }
+
+    // Update password
+    await AuthService.updatePassword(email, password);
+
+    logger.info("Password reset successfully", { email });
+    res.status(HTTP_STATUS.OK).json({
+      message: AUTH_MESSAGES.PASSWORD_RESET_SUCCESS,
+    });
   } catch (error) {
     if (error.name === "ZodError") {
-      logger.warn("Login validation failed", { errors: error.errors });
-      return next(ErrorHandler(400, error.errors[0].message));
+      logger.warn("Reset password validation failed", {
+        errors: error.errors.map((e) => e.message),
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, error.errors[0].message)
+      );
     }
-    logger.error("Login error", {
+
+    logger.error("Reset password error", {
       email: req.body?.email,
       message: error.message,
-      errorType: error.name,
     });
-    return next(error);
+    next(error);
   }
 };

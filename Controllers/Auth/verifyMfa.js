@@ -1,62 +1,58 @@
-import User from "../../Modals/UserModal.js";
+import { AuthService } from "../../Services/Auth/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
-import speakeasy from "speakeasy";
-import Auth from "../../Modals/AuthModal.js";
 import { TwoFaValidation } from "../../validation/authValidation.js";
+import { AUTH_MESSAGES, HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Verify MFA Controller
+ * Verifies MFA token and enables MFA for user
+ */
 export const VerifyMFA = async (req, res, next) => {
-  //------ validate request body
-  const { email, token } = TwoFaValidation.parse(req.body);
-
-  logger.info("VerifyMFA called with: ", { email });
-
   try {
-    // ------ find user by email
-    const user = await User.findOne({
-      where: { email },
-      include: [{ model: Auth, as: "auth" }],
-    });
+    // Validate request body
+    const { email, token } = TwoFaValidation.parse(req.body);
 
+    logger.info("Verify MFA request", { email });
+
+    // Check if user exists
+    const user = await AuthService.getUserByEmail(email);
     if (!user) {
-      logger.warn("VerifyMFA failed: User not found for email: ", { email });
-      return next(ErrorHandler(400, "User not found"));
+      logger.warn("Verify MFA failed: User not found", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.USER_NOT_FOUND)
+      );
     }
 
-    // ------ get auth record
-    const auth = user.auth;
-
-    if (!auth) {
-      logger.warn("VerifyMFA failed: Auth record not found for email: ", {
-        email,
-      });
-      return next(ErrorHandler(400, "Auth record not found"));
+    // Verify MFA token
+    const isValid = await AuthService.verifyMFAToken(email, token);
+    if (!isValid) {
+      logger.warn("Verify MFA failed: Invalid token", { email });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, AUTH_MESSAGES.INVALID_MFA_TOKEN)
+      );
     }
 
-    // ------ verify MFA token
-    const verified = speakeasy.totp.verify({
-      secret: auth.MfaSeceret,
-      encoding: "base32",
-      token: token,
-      window: 1,
+    // Enable MFA for user
+    await AuthService.enableMFA(email);
+
+    logger.info("MFA verified and enabled successfully", { email });
+
+    res.status(HTTP_STATUS.OK).json({
+      message: AUTH_MESSAGES.MFA_ENABLED_SUCCESS,
     });
-
-    if (!verified) {
-      logger.warn("VerifyMFA failed: Invalid MFA token for email: ", { email });
-      return next(ErrorHandler(400, "Invalid MFA Token"));
+  } catch (error) {
+    if (error.name === "ZodError") {
+      logger.warn("Verify MFA validation failed", {
+        errors: error.errors.map((e) => e.message),
+      });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, error.errors[0].message)
+      );
     }
 
-    logger.info("VerifyMFA token verified for email: ", { email });
-
-    user.MfaEnabled = true;
-    await user.save();
-    await auth.save();
-
-    logger.info("MFA enabled successfully for email: ", { email });
-
-    res.status(200).json({ message: "MFA verified and enabled successfully" });
-  } catch (error) {
-    logger.error("VerifyMFA error for email: ", { email }, " - ", {
+    logger.error("Verify MFA error", {
+      email: req.body?.email,
       message: error.message,
     });
     return next(error);

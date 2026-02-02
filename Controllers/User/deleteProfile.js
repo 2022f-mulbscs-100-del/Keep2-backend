@@ -1,50 +1,51 @@
-import User from "../../Modals/UserModal.js";
+import { UserService } from "../../Services/User/index.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
-import bcrypt from "bcrypt";
 import { logger } from "../../utils/Logger.js";
+import { HTTP_STATUS, USER_MESSAGES } from "../../Constants/messages.js";
 import Stripe from "stripe";
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+/**
+ * Delete Profile Controller
+ * Permanently deletes user account after password verification
+ */
 export const DeleteProfile = async (req, res, next) => {
-  logger.info("Delete profile called in UserController");
-  const userData = req.user;
-  logger.info("User data from token:", { userData: userData });
-  const { password } = req.body;
-  logger.info("params from request body:", { password: "****" });
-  logger.info(userData);
   try {
-    const user = await User.findByPk(userData.id);
-    if (!user) {
-      logger.error("user not found", { userId: userData.id });
-      return next(ErrorHandler(404, "user not found"));
-    }
+    const { id: userId } = req.user;
+    const { password } = req.body;
+
+    logger.info("Delete profile request", { userId });
 
     if (!password) {
-      logger.error("Password is required to delete profile", {
-        userId: userData.id,
-      });
-      return next(ErrorHandler(400, "Password is required"));
+      logger.warn("Password not provided for profile deletion", { userId });
+      return next(
+        ErrorHandler(HTTP_STATUS.BAD_REQUEST, USER_MESSAGES.PASSWORD_REQUIRED)
+      );
     }
 
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    // Verify password and delete account
+    const stripeCustomerId = await UserService.deleteUserAccountWithPassword(
+      userId,
+      password
+    );
 
-    if (!isPasswordCorrect) {
-      logger.error("Invalid password provided for profile deletion", {
-        userId: userData.id,
-      });
-      return next(ErrorHandler(400, "Invalid Password"));
+    // Delete Stripe customer
+    if (stripeCustomerId) {
+      logger.info("Deleting Stripe customer", { userId, stripeCustomerId });
+      await stripe.customers.del(stripeCustomerId);
     }
 
-    logger.info("Deleting user profile from Stripe and database", {
-      userId: userData.id,
-      stripeCustomerId: user.stripeCustomerId,
+    logger.info("User profile deleted successfully", { userId });
+
+    res.status(HTTP_STATUS.OK).json({
+      message: USER_MESSAGES.PROFILE_DELETED_SUCCESS,
     });
-    await stripe.customers.del(user.stripeCustomerId);
-    await User.destroy({ where: { id: userData.id } });
-    res.status(200).json({ message: "User profile deleted successfully" });
-    logger.info("User profile deleted successfully", { userId: userData.id });
   } catch (error) {
+    logger.error("Delete profile error", {
+      userId: req.user?.id,
+      message: error.message,
+    });
     next(error);
   }
 };

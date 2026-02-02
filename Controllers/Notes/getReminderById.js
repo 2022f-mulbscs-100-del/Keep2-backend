@@ -1,33 +1,33 @@
-import Notes from "../../Modals/notes.modal.js";
-import RemainderNotes from "../../Modals/RemainderNotes.modal.js";
+import { NotesService } from "../../Services/Notes/index.js";
 import { logger } from "../../utils/Logger.js";
+import { HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Get Reminder By Note ID Controller
+ * Retrieves all reminders for a specific note
+ */
 export const getRemainderNoteById = async (req, res, next) => {
-  const { id: userId } = req.user;
-  const { noteId } = req.params;
-  logger.info("getRemainderNoteById called", { userId, noteId });
   try {
-    const remainderNotes = await RemainderNotes.findAll({
-      where: { noteId },
-      include: [
-        {
-          model: Notes,
-          as: "note",
-          where: { isDeleted: false },
-        },
-      ],
-    });
-    logger.info("Remainder Notes fetched successfully", {
+    const { id: userId } = req.user;
+    const { noteId } = req.params;
+
+    logger.info("Get reminder by note ID request", { userId, noteId });
+
+    // Fetch reminders by note ID using service
+    const remainderNotes = await NotesService.getRemindersByNoteId(noteId);
+
+    logger.info("Reminders fetched successfully", {
       userId,
       noteId,
       count: remainderNotes.length,
     });
-    res.json(remainderNotes);
+
+    res.status(HTTP_STATUS.OK).json(remainderNotes);
   } catch (error) {
-    logger.error("Error fetching remainder notes by ID", {
-      userId,
-      noteId,
-      error: error.message,
+    logger.error("Get reminder by note ID error", {
+      userId: req.user?.id,
+      noteId: req.params?.noteId,
+      message: error.message,
     });
     next(error);
   }

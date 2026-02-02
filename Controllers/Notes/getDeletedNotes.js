@@ -1,23 +1,30 @@
-import Notes from "../../Modals/notes.modal.js";
+import { NotesService } from "../../Services/Notes/index.js";
 import { logger } from "../../utils/Logger.js";
+import { HTTP_STATUS } from "../../Constants/messages.js";
 
+/**
+ * Get Deleted Notes Controller
+ * Retrieves all soft-deleted notes for the authenticated user
+ */
 export const getDeletedNotes = async (req, res, next) => {
-  const { id: userId } = req.user;
-  logger.info("Fetching deleted notes", { userId });
   try {
-    const deletedNotes = await Notes.findAll({
-      where: { isDeleted: true, userId },
-      order: [["updatedAt", "DESC"]],
-    });
+    const { id: userId } = req.user;
+
+    logger.info("Get deleted notes request", { userId });
+
+    // Fetch deleted notes using service
+    const deletedNotes = await NotesService.getDeletedNotes(userId);
+
     logger.info("Deleted notes retrieved successfully", {
       userId,
       count: deletedNotes.length,
     });
-    res.json(deletedNotes);
+
+    res.status(HTTP_STATUS.OK).json(deletedNotes);
   } catch (error) {
-    logger.error("Error fetching deleted notes", {
-      userId,
-      error: error.message,
+    logger.error("Get deleted notes error", {
+      userId: req.user?.id,
+      message: error.message,
     });
     next(error);
   }

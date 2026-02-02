@@ -11,6 +11,7 @@ logger.info("NotesRoute initialized");
  * /notes:
  *   get:
  *     summary: Get all notes
+ *     description: Retrieve all notes belonging to the authenticated user.
  *     tags:
  *       - Notes
  *     security:
@@ -18,8 +19,26 @@ logger.info("NotesRoute initialized");
  *     responses:
  *       200:
  *         description: List of notes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   title:
+ *                     type: string
+ *                   content:
+ *                     type: string
+ *                   userId:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized, invalid token
  */
 route.get("/notes", VerifyToken, NotesController.getNotes);
 
@@ -28,6 +47,7 @@ route.get("/notes", VerifyToken, NotesController.getNotes);
  * /addnotes:
  *   post:
  *     summary: Create a new note
+ *     description: Create a new note for the authenticated user.
  *     tags:
  *       - Notes
  *     security:
@@ -44,15 +64,31 @@ route.get("/notes", VerifyToken, NotesController.getNotes);
  *             properties:
  *               title:
  *                 type: string
+ *                 description: Note title
  *               content:
  *                 type: string
+ *                 description: Note content/body
+ *             example:
+ *               title: "My First Note"
+ *               content: "This is the content of my note"
  *     responses:
  *       201:
  *         description: Note created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 title:
+ *                   type: string
+ *                 content:
+ *                   type: string
  *       400:
- *         description: Invalid input
+ *         description: Invalid input, missing required fields
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized, invalid token
  */
 route.post("/addnotes", VerifyToken, NotesController.createNote);
 
@@ -61,6 +97,7 @@ route.post("/addnotes", VerifyToken, NotesController.createNote);
  * /deleteNotes:
  *   delete:
  *     summary: Delete all notes
+ *     description: Delete all notes belonging to the authenticated user. Use with caution.
  *     tags:
  *       - Notes
  *     security:
@@ -68,8 +105,18 @@ route.post("/addnotes", VerifyToken, NotesController.createNote);
  *     responses:
  *       200:
  *         description: All notes deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "All notes deleted successfully"
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized, invalid token
+ *       500:
+ *         description: Internal server error
  */
 route.delete("/deleteNotes", VerifyToken, NotesController.deleteNotes);
 
@@ -78,6 +125,7 @@ route.delete("/deleteNotes", VerifyToken, NotesController.deleteNotes);
  * /deleteNotes/{id}:
  *   delete:
  *     summary: Delete a note by ID
+ *     description: Delete a specific note belonging to the authenticated user.
  *     tags:
  *       - Notes
  *     security:
@@ -92,10 +140,17 @@ route.delete("/deleteNotes", VerifyToken, NotesController.deleteNotes);
  *     responses:
  *       200:
  *         description: Note deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       404:
  *         description: Note not found
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized, invalid token
  */
 route.delete("/deleteNotes/:id", VerifyToken, NotesController.deleteNotesById);
 
@@ -104,6 +159,7 @@ route.delete("/deleteNotes/:id", VerifyToken, NotesController.deleteNotesById);
  * /UpdateNotes/{id}:
  *   put:
  *     summary: Update a note by ID
+ *     description: Update a specific note's title and/or content.
  *     tags:
  *       - Notes
  *     security:
@@ -124,17 +180,29 @@ route.delete("/deleteNotes/:id", VerifyToken, NotesController.deleteNotesById);
  *             properties:
  *               title:
  *                 type: string
+ *                 description: Updated note title
  *               content:
  *                 type: string
+ *                 description: Updated note content
+ *             example:
+ *               title: "Updated Title"
+ *               content: "Updated content here"
  *     responses:
  *       200:
  *         description: Note updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       400:
  *         description: Invalid input
  *       404:
  *         description: Note not found
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized, invalid token
  */
 route.put("/UpdateNotes/:id", VerifyToken, NotesController.updateNotes);
 
@@ -143,6 +211,7 @@ route.put("/UpdateNotes/:id", VerifyToken, NotesController.updateNotes);
  * /notes/{id}:
  *   get:
  *     summary: Get note by ID
+ *     description: Retrieve a specific note by its ID.
  *     tags:
  *       - Notes
  *     security:
@@ -157,10 +226,21 @@ route.put("/UpdateNotes/:id", VerifyToken, NotesController.updateNotes);
  *     responses:
  *       200:
  *         description: Note retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 title:
+ *                   type: string
+ *                 content:
+ *                   type: string
  *       404:
  *         description: Note not found
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized, invalid token
  */
 route.get("/notes/:id", VerifyToken, NotesController.getNotesById);
 
@@ -169,6 +249,7 @@ route.get("/notes/:id", VerifyToken, NotesController.getNotesById);
  * /deletedNotes:
  *   get:
  *     summary: Get all deleted notes
+ *     description: Retrieve all notes that have been deleted by the authenticated user.
  *     tags:
  *       - Notes
  *     security:
@@ -176,8 +257,14 @@ route.get("/notes/:id", VerifyToken, NotesController.getNotesById);
  *     responses:
  *       200:
  *         description: List of deleted notes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized, invalid token
  */
 route.get("/deletedNotes", VerifyToken, NotesController.getDeletedNotes);
 
@@ -186,6 +273,7 @@ route.get("/deletedNotes", VerifyToken, NotesController.getDeletedNotes);
  * /getArchivedNotes:
  *   get:
  *     summary: Get all archived notes
+ *     description: Retrieve all notes that have been archived by the authenticated user.
  *     tags:
  *       - Notes
  *     security:
@@ -193,8 +281,14 @@ route.get("/deletedNotes", VerifyToken, NotesController.getDeletedNotes);
  *     responses:
  *       200:
  *         description: List of archived notes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized, invalid token
  */
 route.get("/getArchivedNotes", VerifyToken, NotesController.getArchivedNotes);
 /**
@@ -264,7 +358,8 @@ route.post("/createReminder", VerifyToken, NotesController.remindersNotes);
  * @swagger
  * /getRemainderNotes:
  *   get:
- *     summary: Get all reminder notes for logged-in user
+ *     summary: Get all reminder notes
+ *     description: Retrieve all reminder notes created by the authenticated user.
  *     tags:
  *       - Reminders
  *     security:
@@ -272,34 +367,6 @@ route.post("/createReminder", VerifyToken, NotesController.remindersNotes);
  *     responses:
  *       200:
  *         description: Reminder notes fetched successfully
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Internal server error
- */
-
-route.get("/getRemainderNotes", VerifyToken, NotesController.getRemainderNotes);
-
-/**
- * @swagger
- * /api/remainder-notes/{noteId}:
- *   get:
- *     summary: Get a specific remainder note by its associated note ID
- *     description: Fetches remainder notes for a given noteId that belong to the authenticated user. Only includes associated notes that are not deleted.
- *     tags:
- *       - RemainderNotes
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: noteId
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID of the note to fetch remainder notes for
- *     responses:
- *       200:
- *         description: Remainder notes fetched successfully
  *         content:
  *           application/json:
  *             schema:
@@ -309,43 +376,66 @@ route.get("/getRemainderNotes", VerifyToken, NotesController.getRemainderNotes);
  *                 properties:
  *                   id:
  *                     type: integer
- *                     description: ID of the remainder note
- *                   userId:
- *                     type: integer
- *                     description: ID of the user who owns the remainder note
+ *                   title:
+ *                     type: string
  *                   noteId:
  *                     type: integer
- *                     description: ID of the associated note
  *                   date:
  *                     type: string
  *                     format: date
- *                     description: Scheduled date of the reminder
  *                   time:
  *                     type: string
- *                     description: Scheduled time of the reminder
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+route.get("/getRemainderNotes", VerifyToken, NotesController.getRemainderNotes);
+
+/**
+ * @swagger
+ * /remainder-notes/{noteId}:
+ *   get:
+ *     summary: Get reminders for a specific note
+ *     description: Retrieve all reminder notes associated with a specific note ID.
+ *     tags:
+ *       - Reminders
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: noteId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the note to fetch reminders for
+ *     responses:
+ *       200:
+ *         description: Reminder notes fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   userId:
+ *                     type: integer
+ *                   noteId:
+ *                     type: integer
+ *                   date:
+ *                     type: string
+ *                     format: date
+ *                   time:
+ *                     type: string
  *                   repeat:
  *                     type: string
- *                     description: Repeat pattern for the reminder
- *                   note:
- *                     type: object
- *                     description: Associated note object (only if not deleted)
- *                     properties:
- *                       id:
- *                         type: integer
- *                         description: ID of the note
- *                       title:
- *                         type: string
- *                         description: Title of the note
- *                       content:
- *                         type: string
- *                         description: Content of the note
- *                       isDeleted:
- *                         type: boolean
- *                         description: Whether the note is deleted
  *       401:
- *         description: Unauthorized, user not authenticated
+ *         description: Unauthorized
  *       404:
- *         description: No remainder notes found for the given noteId
+ *         description: No reminders found for the note
  *       500:
  *         description: Internal server error
  */
@@ -357,21 +447,21 @@ route.get(
 
 /**
  * @swagger
- * /api/remainder-notes/update/{remainderId}:
+ * /remainder-notes/update/{remainderId}:
  *   put:
- *     summary: Update a remainder note
- *     description: Updates an existing remainder note for the authenticated user. Only the fields provided in the request body will be updated.
+ *     summary: Update a reminder note
+ *     description: Update an existing reminder note for the authenticated user.
  *     tags:
- *       - RemainderNotes
+ *       - Reminders
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: remainderId
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID of the remainder note to update
+ *         description: ID of the reminder note to update
  *     requestBody:
  *       required: true
  *       content:
@@ -381,62 +471,34 @@ route.get(
  *             properties:
  *               title:
  *                 type: string
- *                 description: The title of the reminder
+ *                 description: Reminder title
  *               date:
  *                 type: string
  *                 format: date
- *                 description: The date of the next reminder (YYYY-MM-DD)
+ *                 description: Reminder date
  *               time:
  *                 type: string
- *                 format: time
- *                 description: The time of the reminder (HH:mm)
+ *                 description: Reminder time (HH:mm)
  *               repeat:
  *                 type: string
  *                 enum: [none, daily, weekly, monthly, yearly]
- *                 description: The repeat pattern for the reminder
+ *                 description: Repeat pattern
  *     responses:
  *       200:
- *         description: Remainder note updated successfully
+ *         description: Reminder updated successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- *                   description: ID of the remainder note
- *                 noteId:
- *                   type: integer
- *                   description: ID of the associated note
- *                 userId:
- *                   type: integer
- *                   description: ID of the user who owns the reminder
- *                 reminderTitle:
- *                   type: string
- *                   description: Updated title of the reminder
- *                 nextReminderDate:
- *                   type: string
- *                   format: date-time
- *                   description: Updated next reminder date and time
- *                 remainderTime:
- *                   type: string
- *                   description: Updated reminder time
- *                 repeatReminder:
- *                   type: string
- *                   description: Updated repeat pattern
- *                 reminderStatus:
- *                   type: boolean
- *                   description: Whether the reminder has been triggered
  *       400:
  *         description: Bad request, invalid input
  *       401:
- *         description: Unauthorized, user not authenticated
+ *         description: Unauthorized
  *       404:
- *         description: Remainder note not found
+ *         description: Reminder not found
  *       500:
  *         description: Internal server error
  */
-
 route.put(
   "/remainder-notes/update/:remainderId",
   VerifyToken,
@@ -445,13 +507,14 @@ route.put(
 
 /**
  * @swagger
- * /api/label-categories:
+ * /createLabelCategories:
  *   post:
- *     summary: Create a new label category
- *     description: Create a label category for the authenticated user
- *     tags: [Label Categories]
+ *     summary: Create a label category
+ *     description: Create a new label category for organizing notes.
+ *     tags:
+ *       - Label Categories
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -463,10 +526,13 @@ route.put(
  *             properties:
  *               categoryName:
  *                 type: string
- *                 example: Work
+ *                 description: Category name
  *               colorCode:
  *                 type: string
- *                 example: "#FF5733"
+ *                 description: Hex color code for category
+ *             example:
+ *               categoryName: Work
+ *               colorCode: "#FF5733"
  *     responses:
  *       201:
  *         description: Label category created successfully
@@ -477,22 +543,17 @@ route.put(
  *               properties:
  *                 id:
  *                   type: integer
- *                   example: 1
  *                 categoryName:
  *                   type: string
- *                   example: Work
  *                 colorCode:
  *                   type: string
- *                   example: "#FF5733"
  *                 userId:
  *                   type: integer
- *                   example: 5
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
-
 route.post(
   "/createLabelCategories",
   VerifyToken,
@@ -501,20 +562,14 @@ route.post(
 
 /**
  * @swagger
- * /api/label-categories/{id}:
+ * /updateLabelCategories:
  *   put:
  *     summary: Update a label category
- *     description: Update label category name or color
- *     tags: [Label Categories]
+ *     description: Update label category name or color code.
+ *     tags:
+ *       - Label Categories
  *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Label category ID
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -524,21 +579,23 @@ route.post(
  *             properties:
  *               categoryName:
  *                 type: string
- *                 example: Personal
+ *                 description: Updated category name
  *               colorCode:
  *                 type: string
- *                 example: "#3498DB"
+ *                 description: Updated color code
+ *             example:
+ *               categoryName: Personal
+ *               colorCode: "#3498DB"
  *     responses:
  *       200:
  *         description: Label category updated successfully
- *       404:
- *         description: Label category not found
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: Category not found
  *       500:
  *         description: Server error
  */
-
 route.put(
   "/updateLabelCategories",
   VerifyToken,
@@ -547,31 +604,31 @@ route.put(
 
 /**
  * @swagger
- * /api/label-categories/{id}:
- *   delete:
+ * /deleteLabelCategories/{id}:
+ *   get:
  *     summary: Delete a label category
- *     description: Delete a label category belonging to the authenticated user
- *     tags: [Label Categories]
+ *     description: Delete a label category belonging to the authenticated user.
+ *     tags:
+ *       - Label Categories
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Label category ID
+ *         description: Label category ID to delete
  *     responses:
  *       200:
  *         description: Label category deleted successfully
- *       404:
- *         description: Label category not found
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: Category not found
  *       500:
  *         description: Server error
  */
-
 route.get(
   "/deleteLabelCategories/:id",
   VerifyToken,
@@ -579,13 +636,14 @@ route.get(
 );
 /**
  * @swagger
- * /api/label-categories:
+ * /getLabelCategories:
  *   get:
  *     summary: Get all label categories
- *     description: Fetch all label categories created by the authenticated user
- *     tags: [Label Categories]
+ *     description: Fetch all label categories created by the authenticated user.
+ *     tags:
+ *       - Label Categories
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Label categories fetched successfully
@@ -598,28 +656,17 @@ route.get(
  *                 properties:
  *                   id:
  *                     type: integer
- *                     example: 1
  *                   categoryName:
  *                     type: string
- *                     example: Work
  *                   colorCode:
  *                     type: string
- *                     example: "#FF5733"
  *                   userId:
  *                     type: integer
- *                     example: 5
- *                   createdAt:
- *                     type: string
- *                     format: date-time
- *                   updatedAt:
- *                     type: string
- *                     format: date-time
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
-
 route.get(
   "/getLabelCategories",
   VerifyToken,
@@ -628,15 +675,14 @@ route.get(
 
 /**
  * @swagger
- * /api/label-categories/{title}:
+ * /getLabelCategoriesByCategoryName/{title}:
  *   get:
  *     summary: Get label category by name with notes
- *     description: >
- *       Fetch a label category by its title for the authenticated user.
- *       Also returns all non-deleted notes associated with the category.
- *     tags: [Label Categories]
+ *     description: Fetch a label category by its title for the authenticated user, including all associated non-deleted notes.
+ *     tags:
+ *       - Label Categories
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: title
@@ -644,7 +690,6 @@ route.get(
  *         schema:
  *           type: string
  *         description: Label category title
- *         example: Work
  *     responses:
  *       200:
  *         description: Label category with associated notes fetched successfully
@@ -657,39 +702,16 @@ route.get(
  *                 properties:
  *                   id:
  *                     type: integer
- *                     example: 1
  *                   title:
  *                     type: string
- *                     example: Work
  *                   colorCode:
  *                     type: string
- *                     example: "#FF5733"
  *                   userId:
  *                     type: integer
- *                     example: 5
  *                   notes:
  *                     type: array
  *                     items:
  *                       type: object
- *                       properties:
- *                         id:
- *                           type: integer
- *                           example: 10
- *                         title:
- *                           type: string
- *                           example: Meeting Notes
- *                         description:
- *                           type: string
- *                           example: Discussion points from meeting
- *                         isDeleted:
- *                           type: boolean
- *                           example: false
- *                         createdAt:
- *                           type: string
- *                           format: date-time
- *                         updatedAt:
- *                           type: string
- *                           format: date-time
  *       401:
  *         description: Unauthorized
  *       404:
@@ -697,7 +719,6 @@ route.get(
  *       500:
  *         description: Server error
  */
-
 route.get(
   "/getLabelCategoriesByCategoryName/:title",
   VerifyToken,
