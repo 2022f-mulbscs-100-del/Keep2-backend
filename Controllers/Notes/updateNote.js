@@ -25,7 +25,7 @@ export const updateNotes = async (req, res, next) => {
       logger.warn("Note not found for update", { noteId: id });
       return next(ErrorHandler(404, "Note not found"));
     }
-    const existingImages = note.dataValues.image || "[]";
+    const existingImages = note.dataValues.image || [];
     const newImages = Array.isArray(imageUrl) ? imageUrl : [];
     const imageUrlCombined = [...existingImages, ...newImages];
     const updatedNote = await Notes.update(

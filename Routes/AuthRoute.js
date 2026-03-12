@@ -2,12 +2,12 @@ import express from "express";
 import * as AuthController from "../Controllers/Auth/AuthController.js";
 import { logger } from "../utils/Logger.js";
 import { VerifyToken } from "../utils/VerifyToken.js";
-import { AuthRateLimiter } from "../utils/RateLimiter.js";
+// import { AuthRateLimiter } from "../utils/RateLimiter.js";
 
 const route = express.Router();
 logger.info("AuthRoute initialized");
 
-route.use(AuthRateLimiter);
+// route.use(AuthRateLimiter);
 
 // --------------------  Auth Routes --------------------
 

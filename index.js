@@ -22,6 +22,8 @@ import GithubPassport from "./config/GithubPassport.js";
 import CollaboratorsRoute from "./Routes/CollaboratorsRoute.js";
 import http from "http";
 import { initializeSocket } from "./socket/socket.js";
+// import rateLimit from "express-rate-limit";
+import redisClient from "./config/redisClient.js";
 
 const app = express();
 
@@ -35,17 +37,20 @@ logger.info("Application initializing", {
 });
 
 // const limiter = rateLimit({
-//   keyGenerator: (req) => req.user.id, // use authenticated user id
-//   windowMs: 60 * 1000,
-//   max: 10,
+//   windowMs: 15 * 60 * 1000,
+//   max: 100,
 //   message: "Too many requests from this user",
 // });
 
+// Stripe webhook
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
   webhookHandler
 );
+
+// Global middlewares
+// app.use(limiter);
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -56,9 +61,11 @@ app.use(
   })
 );
 
+// Initialize Passport strategies
 app.use(GooglePassport.initialize());
 app.use(GithubPassport.initialize());
 
+// Routes
 app.get("/refresh", Refresh);
 app.use("/api", NoteRoute);
 app.use("/api", AuthRoute);
@@ -68,9 +75,12 @@ app.use("/api", paymentRoute);
 app.use("/api", sendEmail);
 app.use("/api", verifyTurnstileToken);
 app.use("/api", CollaboratorsRoute);
+
+// Swagger documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 logger.info("Swagger documentation available at /api-docs");
 
+// Global error handler
 //eslint-disable-next-line
 app.use((err, req, res, next) => {
   logger.error("Request error", {
@@ -85,8 +95,14 @@ app.use((err, req, res, next) => {
   });
 });
 
+//cron job
 startCleanUpCron();
+
+// Start server after DB connection
+
 authenticateDB();
+redisClient.connect();
+
 server.listen(process.env.SERVER_PORT, () => {
   logger.info("Server started successfully", {
     port: process.env.SERVER_PORT,
@@ -96,3 +112,5 @@ server.listen(process.env.SERVER_PORT, () => {
 
 // Store all dates in ISO (always UTC)
 // Normalize all dates to UTC before doing math:
+
+//setup,global error , middleware,routes Protection , sockets , db connection, swagger documentation, cron jobs, logging, security headers, rate limiting

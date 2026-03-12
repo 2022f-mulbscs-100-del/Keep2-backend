@@ -16,7 +16,7 @@ export const createLabelCategories = async (req, res, next) => {
       userId,
     });
     logger.info("Label Category added successfully for userId: ", userId);
-    res.json(newLabelCategory);
+    res.status(201).json(newLabelCategory);
   } catch (error) {
     next(error);
     logger.error("createLabelCategories error: ", { error: error.message });
