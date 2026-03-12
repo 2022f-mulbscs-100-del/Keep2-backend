@@ -15,7 +15,7 @@ export const updateRemainder = async (req, res, next) => {
   });
   try {
     const remainderNote = await RemainderNotes.findOne({
-      where: { noteId: remainderId, userId },
+      where: { id: remainderId, userId },
     });
     if (!remainderNote) {
       const error = new Error("Remainder note not found");

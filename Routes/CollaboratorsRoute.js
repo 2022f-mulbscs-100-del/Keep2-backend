@@ -3,14 +3,19 @@ import { VerifyToken } from "../utils/VerifyToken.js";
 import * as CollaboratorsController from "../Controllers/Collaborators/CollaboratorsController.js";
 
 const route = express.Router();
+
 /**
  * @swagger
  * /api/collaborators:
  *   post:
  *     summary: Add a collaborator to a note
- *     description: Adds a collaborator with a specific role to an existing note.
+ *     description: >
+ *       Adds a collaborator to a specific note. Sends an email to the collaborator with the note link.
+ *       The collaborator user must exist. Owner information is stored in the note.
  *     tags:
  *       - Collaborators
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -20,18 +25,18 @@ const route = express.Router();
  *             required:
  *               - noteId
  *               - collaborator
- *               - role
  *             properties:
  *               noteId:
  *                 type: integer
+ *                 description: ID of the note to add the collaborator to
  *                 example: 12
  *               collaborator:
- *                 type: integer
- *                 description: User ID of the collaborator
- *                 example: 5
+ *                 type: string
+ *                 description: Email of the collaborator to add
+ *                 example: john@example.com
  *               role:
  *                 type: string
- *                 description: Role of the collaborator on the note
+ *                 description: Role of the collaborator (viewer by default)
  *                 example: editor
  *     responses:
  *       201:
@@ -53,24 +58,29 @@ const route = express.Router();
  *                     noteId:
  *                       type: integer
  *                       example: 12
- *                     collaborator:
+ *                     userId:
  *                       type: integer
  *                       example: 5
+ *                     collaborator:
+ *                       type: string
+ *                       example: john@example.com
  *                     role:
  *                       type: string
- *                       example: editor
+ *                       example: viewer
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2026-03-11T22:30:00.000Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2026-03-11T22:30:00.000Z"
  *       404:
- *         description: Note not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Note not found
+ *         description: Collaborator user or owner not found
+ *       401:
+ *         description: Unauthorized
  *       500:
- *         description: Internal server error
+ *         description: Server error
  */
 
 route.post(
@@ -81,12 +91,14 @@ route.post(
 
 /**
  * @swagger
- * /api/notes/{noteId}/collaborators:
+ * /api/collaborators/{noteId}:
  *   get:
- *     summary: Get collaborators of a note
- *     description: Fetch all collaborators associated with a specific note.
+ *     summary: Get all collaborators for a note
+ *     description: Fetches all collaborators associated with a specific note.
  *     tags:
  *       - Collaborators
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: noteId
@@ -119,18 +131,58 @@ route.post(
  *                         example: 12
  *                       collaborator:
  *                         type: string
- *                         example: user@example.com
- *                       role:
- *                         type: string
- *                         example: editor
+ *                         example: john@example.com
  *                       createdAt:
  *                         type: string
  *                         format: date-time
+ *                         example: "2026-03-11T22:30:00.000Z"
  *                       updatedAt:
  *                         type: string
  *                         format: date-time
- *       404:
- *         description: Note not found or no collaborators
+ *                         example: "2026-03-11T22:30:00.000Z"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+
+route.get(
+  "/getCollaborators/:noteId",
+  VerifyToken,
+  CollaboratorsController.getCollaborators
+);
+
+/**
+ * @swagger
+ * /api/collaborators:
+ *   delete:
+ *     summary: Delete a collaborator from a note
+ *     description: Deletes a collaborator from a specific note based on the noteId and collaborator email provided in the request body.
+ *     tags:
+ *       - Collaborators
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - noteId
+ *               - collaborator
+ *             properties:
+ *               noteId:
+ *                 type: integer
+ *                 description: ID of the note from which to remove the collaborator
+ *                 example: 12
+ *               collaborator:
+ *                 type: string
+ *                 description: Email of the collaborator to remove
+ *                 example: john@example.com
+ *     responses:
+ *       200:
+ *         description: Collaborator deleted successfully
  *         content:
  *           application/json:
  *             schema:
@@ -138,19 +190,27 @@ route.post(
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Note not found
+ *                   example: Collaborator deleted successfully
+ *       404:
+ *         description: Collaborator not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Collaborator not found
+ *       401:
+ *         description: Unauthorized
  *       500:
- *         description: Internal server error
+ *         description: Server error
  */
-route.get(
-  "/getCollaborators/:noteId",
-  VerifyToken,
-  CollaboratorsController.getCollaborators
-);
 
 route.delete(
   "/deleteCollaborator",
   VerifyToken,
   CollaboratorsController.deleteCollaborator
 );
+
 export default route;

@@ -5,21 +5,21 @@ import {
 } from "../Controllers/SandboxController.js";
 import { VerifyToken } from "../utils/VerifyToken.js";
 import { logger } from "../utils/Logger.js";
-import { GeneralRateLimiter } from "../utils/RateLimiter.js";
 
 const Sandboxroute = express.Router();
 
 logger.info("SandboxRoute initialized");
 
-Sandboxroute.use(GeneralRateLimiter);
 /**
  * @swagger
- * /generateSandbox:
+ * /api/sandbox/generate:
  *   post:
- *     summary: Generate sandbox data
- *     description: Generate sandbox data for the authenticated user.
+ *     summary: Generate sandbox notes
+ *     description: Generate test notes for the authenticated user. Notes will have random titles, descriptions, and pinned status depending on `useRandomData`.
  *     tags:
  *       - Sandbox
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -27,22 +27,79 @@ Sandboxroute.use(GeneralRateLimiter);
  *           schema:
  *             type: object
  *             required:
- *               - userID
- *               - count
+ *               - numNotes
  *             properties:
- *               count:
- *                 type: number
- *               userID:
- *                 type: string
+ *               numNotes:
+ *                 type: integer
+ *                 description: Number of notes to generate (1-100)
+ *                 example: 10
+ *               useRandomData:
+ *                 type: boolean
+ *                 description: If true, randomize note content and pinned status
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Notes generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Generated 10 Notes Successfully
+ *                 notes:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       pinned:
+ *                         type: boolean
+ *                       userId:
+ *                         type: integer
+ *       400:
+ *         description: Bad request, invalid `numNotes` or missing `numNotes`
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+
+Sandboxroute.post("/generateSandbox", VerifyToken, generateSandbox);
+
+/**
+ * @swagger
+ * /api/sandbox/delete:
+ *   delete:
+ *     summary: Delete all sandbox notes
+ *     description: Delete all notes created by the authenticated user in the sandbox.
+ *     tags:
+ *       - Sandbox
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Sandbox data generated successfully
+ *         description: Sandbox notes deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Deleted Notes Successfully
  *       401:
- *         description: Unauthorized - Invalid or missing token
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 
-Sandboxroute.post("/generateSandbox", VerifyToken, generateSandbox);
 Sandboxroute.delete("/deleteSandbox", VerifyToken, deleteSandbox);
+
 export default Sandboxroute;

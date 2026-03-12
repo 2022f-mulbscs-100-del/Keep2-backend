@@ -4,6 +4,7 @@ import { logger } from "../utils/Logger.js";
 
 const route = express.Router();
 logger.info("TurnstileRoute initialized");
+
 /** * @swagger
  * /turnstile-verify:
  *   post:
@@ -27,6 +28,7 @@ logger.info("TurnstileRoute initialized");
  *       400:
  *         description: Bad Request - Invalid or missing token
  */
+
 route.post("/turnstile-verify", verifyTurnstileToken);
 
 export default route;
