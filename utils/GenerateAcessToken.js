@@ -19,7 +19,7 @@ export const AccessToken = (user) => {
       },
     },
     process.env.ACCESS_SECRET,
-    { expiresIn: "1m" }
+    { expiresIn: "1h" }
   );
 
   return NewRefreshToken;

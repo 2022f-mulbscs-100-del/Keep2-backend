@@ -3,10 +3,11 @@ import { logger } from "../../utils/Logger.js";
 import { RefreshToken } from "../../utils/GenerateRefreshToken.js";
 import axios from "axios";
 import { AccessToken } from "../../utils/GenerateAcessToken.js";
-import Stripe from "stripe";
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+import { getStripeClient } from "../../utils/StripeClient.js";
 
 export const GithubCallback = (req, res, next) => {
+  const stripe = getStripeClient();
+
   //------ authenticate with passport github strategy
   passport.authenticate(
     "github",
@@ -23,7 +24,7 @@ export const GithubCallback = (req, res, next) => {
       }
 
       // ------ create Stripe customer if not exists
-      if (!user.stripeCustomerId) {
+      if (!user.stripeCustomerId && stripe) {
         await stripe.customers
           .create({
             email: user.email,
@@ -38,6 +39,8 @@ export const GithubCallback = (req, res, next) => {
               error: stripeErr.message,
             });
           });
+      } else if (!stripe) {
+        logger.warn("Skipping Stripe customer creation: Stripe not configured");
       }
 
       // ------ generate tokens

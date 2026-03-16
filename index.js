@@ -23,7 +23,7 @@ import CollaboratorsRoute from "./Routes/CollaboratorsRoute.js";
 import http from "http";
 import { initializeSocket } from "./socket/socket.js";
 // import rateLimit from "express-rate-limit";
-import redisClient from "./config/redisClient.js";
+// import redisClient from "./config/redisClient.js";
 
 const app = express();
 
@@ -76,6 +76,11 @@ app.use("/api", sendEmail);
 app.use("/api", verifyTurnstileToken);
 app.use("/api", CollaboratorsRoute);
 
+// app.use('/health', (req, res) => {
+//   throw new Error("Health check error"); // Simulate an error for testing
+//   // res.status(200).json({ status: 'ok' });
+// });
+
 // Swagger documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 logger.info("Swagger documentation available at /api-docs");
@@ -101,7 +106,7 @@ startCleanUpCron();
 // Start server after DB connection
 
 authenticateDB();
-redisClient.connect();
+// redisClient.connect();
 
 server.listen(process.env.SERVER_PORT, () => {
   logger.info("Server started successfully", {
