@@ -2,6 +2,14 @@ import jwt from "jsonwebtoken";
 import { ErrorHandler } from "./ErrorHandler.js";
 
 export const VerifyToken = (req, res, next) => {
+  // const apiKey = req.headers["x-api-key"];
+  // if (!apiKey) {
+  //   return next(ErrorHandler(401, "Api key is missing"));
+  // }
+  // if (apiKey !== process.env.API_KEY) {
+  //   return next();
+  // }
+
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return next(ErrorHandler(401, "Unauthorized"));

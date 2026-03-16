@@ -5,8 +5,7 @@ import axios from "axios";
 import { logger } from "../utils/Logger.js";
 import User from "../Modals/UserModal.js";
 import Subscription from "../Modals/SubscriptionModal.js";
-import Stripe from "stripe";
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+import { getStripeClient } from "../utils/StripeClient.js";
 
 export const startCleanUpCron = () => {
   cron.schedule("*/1 * * * *", mainScheduler);
@@ -18,6 +17,12 @@ const mainScheduler = async () => {
 };
 
 const SubscriptionScheduler = async () => {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    logger.warn("Skipping subscription scheduler: Stripe not configured");
+    return;
+  }
+
   try {
     logger.info("SubscriptionScheduler started");
 

@@ -5,12 +5,12 @@ import { RefreshToken } from "../../utils/GenerateRefreshToken.js";
 import { AccessToken } from "../../utils/GenerateAcessToken.js";
 import { checkExpiration } from "../../utils/CheckExpiration.js";
 import { logger } from "../../utils/Logger.js";
-import Stripe from "stripe";
 import { CodeCheck } from "../../validation/authValidation.js";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+import { getStripeClient } from "../../utils/StripeClient.js";
 
 export const signUpConfirmation = async (req, res, next) => {
+  const stripe = getStripeClient();
+
   //------ validate request body
   const { email, code } = CodeCheck.parse(req.body);
 
@@ -52,7 +52,7 @@ export const signUpConfirmation = async (req, res, next) => {
 
       // ------ create Stripe customer if not exists
 
-      if (!user.stripeCustomerId) {
+      if (!user.stripeCustomerId && stripe) {
         try {
           const customer = await stripe.customers.create({
             email: user.email,
@@ -70,6 +70,8 @@ export const signUpConfirmation = async (req, res, next) => {
           );
           return next(error);
         }
+      } else if (!stripe) {
+        logger.warn("Skipping Stripe customer creation: Stripe not configured");
       }
 
       // ------ generate tokens

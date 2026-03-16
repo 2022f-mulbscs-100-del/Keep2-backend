@@ -1,13 +1,19 @@
-import Stripe from "stripe";
 import { logger } from "../utils/Logger.js";
 import User from "../Modals/UserModal.js";
 import { ErrorHandler } from "../utils/ErrorHandler.js";
 // import { NormalizeDate } from "../utils/NormalizeDate.js";
 import { CalculateProration } from "../utils/CalculateProration.js";
 import Subscription from "../Modals/SubscriptionModal.js";
+import { getStripeClient } from "../utils/StripeClient.js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const SubscriptionPaymentIntent = async (req, res, next) => {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    return res
+      .status(503)
+      .json({ message: "Payments are temporarily unavailable" });
+  }
+
   const { plan } = req.body;
   const { id } = req.user;
   logger.info(
@@ -120,6 +126,13 @@ export const SubscriptionPaymentIntent = async (req, res, next) => {
 
 // webhookHandler to handle stripe webhooks
 export const webhookHandler = async (req, res, next) => {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    return res
+      .status(503)
+      .json({ message: "Payments are temporarily unavailable" });
+  }
+
   logger.info("Webhook handler called");
   const sig = req.headers["stripe-signature"];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -228,6 +241,13 @@ export const webhookHandler = async (req, res, next) => {
 
 // to create a setup intent for saving payment methods without charging
 export const setUpIntent = async (req, res, next) => {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    return res
+      .status(503)
+      .json({ message: "Payments are temporarily unavailable" });
+  }
+
   const { id } = req.user;
 
   const user = User.findByPk(id);
@@ -255,6 +275,13 @@ export const setUpIntent = async (req, res, next) => {
 
 // to update the user payment method default one also adding new payment method to the customer
 export const UpdatePaymentMethod = async (req, res, next) => {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    return res
+      .status(503)
+      .json({ message: "Payments are temporarily unavailable" });
+  }
+
   const { paymentMethodId } = req.body;
   const { id } = req.user;
   logger.info("UpdatePaymentMethod called for user id:", id);
@@ -296,6 +323,13 @@ export const UpdatePaymentMethod = async (req, res, next) => {
 };
 
 export const UpgradeSubscription = async (req, res, next) => {
+  const stripe = getStripeClient();
+  if (!stripe) {
+    return res
+      .status(503)
+      .json({ message: "Payments are temporarily unavailable" });
+  }
+
   const { id } = req.user;
 
   try {

@@ -498,7 +498,7 @@ route.get("/deletedNotes", VerifyToken, NotesController.getDeletedNotes);
  *         description: Internal server error
  */
 
-route.get("/getArchivedNotes", VerifyToken, NotesController.getArchivedNotes);
+route.get("/archivedNotes", VerifyToken, NotesController.getArchivedNotes);
 
 //---------------------  GET REMINDER NOTES ---------------------
 /**
