@@ -1,3 +1,4 @@
+import redisClient from "../../config/redisClient.js";
 import Notes from "../../Modals/notes.modal.js";
 import { logger } from "../../utils/Logger.js";
 import { createNoteValidation } from "../../validation/NotesValidation.js";
@@ -28,6 +29,14 @@ export const createNote = async (req, res, next) => {
       list: list || [],
     });
     logger.info("Note added successfully for userId: ", userId);
+
+    await redisClient.hSet(
+      `notes:${userId}`,
+      newNote.id,
+      JSON.stringify(newNote)
+    );
+    await redisClient.expire(`notes:${userId}`, 3600);
+    logger.info("Note cached in Redis for userId: ", userId);
     res.json(newNote);
   } catch (error) {
     next(error);

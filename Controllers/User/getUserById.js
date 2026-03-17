@@ -4,9 +4,8 @@ import User from "../../Modals/UserModal.js";
 export const getUserById = async (req, res, next) => {
   const { email } = req.params;
   try {
-    const cacheKey = `user:${email}`;
+    const cacheKey = `userProfile:${email}`;
     const cachedUser = await redisClient.get(cacheKey);
-    console.log("cachedUser------->>>>>>>", cachedUser);
     if (cachedUser) {
       return res.status(200).json(JSON.parse(cachedUser));
     }
@@ -21,7 +20,7 @@ export const getUserById = async (req, res, next) => {
       profileImage: user.profileImage,
     };
     await redisClient.set(cacheKey, JSON.stringify(userData), {
-      EX: 60,
+      EX: 3600,
     });
     res.status(200).json(userData);
   } catch (error) {

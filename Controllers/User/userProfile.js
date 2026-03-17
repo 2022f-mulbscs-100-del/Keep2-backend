@@ -1,3 +1,4 @@
+import redisClient from "../../config/redisClient.js";
 import Auth from "../../Modals/AuthModal.js";
 import User from "../../Modals/UserModal.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
@@ -13,6 +14,13 @@ export const userProfile = async (req, res, next) => {
   logger.info("params from the user profile request", { id: id });
 
   try {
+    const cachedKey = `userProfile:${id}`;
+    const cachedData = await redisClient.get(cachedKey);
+    if (cachedData) {
+      logger.info("User profile fetched from cache", { userId: id });
+      return res.status(200).json(JSON.parse(cachedData));
+    }
+
     let user;
     if (process.env.NODE_ENV === "development") {
       user = await User.findByPk(id, {
@@ -29,6 +37,9 @@ export const userProfile = async (req, res, next) => {
       return next(ErrorHandler(404, "user not exists"));
     }
 
+    await redisClient.set(cachedKey, JSON.stringify(user), {
+      EX: 3600,
+    });
     res.status(200).json(user);
     logger.info("User profile fetched successfully", { userProfile: user });
   } catch (error) {

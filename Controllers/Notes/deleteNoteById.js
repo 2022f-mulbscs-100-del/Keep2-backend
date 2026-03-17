@@ -1,10 +1,17 @@
+import redisClient from "../../config/redisClient.js";
 import Notes from "../../Modals/notes.modal.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
 
 export const deleteNotesById = async (req, res, next) => {
   const { id } = req.params;
+  const { id: userId } = req.user;
   logger.info("Deleting note by ID", { noteId: id });
+
+  const NoteCachedKey = `notes:${userId}`;
+  const ArchiveCachedKey = `archivedNotes:${userId}`;
+  const DeletedCachedKey = `deletedNotes:${userId}`;
+  const ReminderCachedKey = `remainderNotes:${userId}`;
 
   try {
     const note = await Notes.findByPk(id);
@@ -14,6 +21,12 @@ export const deleteNotesById = async (req, res, next) => {
     }
     await Notes.destroy({ where: { id } });
     logger.info("Note deleted successfully", { noteId: id });
+
+    await redisClient.hDel(NoteCachedKey, id);
+    await redisClient.hDel(DeletedCachedKey, id);
+    await redisClient.hDel(ArchiveCachedKey, id);
+    await redisClient.hDel(ReminderCachedKey, id);
+
     res.json({ message: "Note deleted successfully" });
   } catch (error) {
     logger.error("Error deleting note", { noteId: id, error: error.message });
