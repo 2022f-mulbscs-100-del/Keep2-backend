@@ -4,6 +4,7 @@ import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import bcrypt from "bcrypt";
 import { logger } from "../../utils/Logger.js";
 import { getStripeClient } from "../../utils/StripeClient.js";
+import redisClient from "../../config/redisClient.js";
 // import redisClient from "../../config/redisClient.js";
 
 export const DeleteProfile = async (req, res, next) => {
@@ -65,7 +66,8 @@ export const DeleteProfile = async (req, res, next) => {
       });
     }
     await User.destroy({ where: { id: userData.id } });
-    // await redisClient.del(`userProfile:${req.user.id}`);
+    await redisClient.del(`userProfile:${req.user.id}`);
+    await redisClient.del(`userProfile:${userData.email}`);
     res.status(200).json({ message: "User profile deleted successfully" });
     logger.info("User profile deleted successfully", { userId: userData.id });
   } catch (error) {

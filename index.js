@@ -22,8 +22,8 @@ import GithubPassport from "./config/GithubPassport.js";
 import CollaboratorsRoute from "./Routes/CollaboratorsRoute.js";
 import http from "http";
 import { initializeSocket } from "./socket/socket.js";
+import redisClient from "./config/redisClient.js";
 // import rateLimit from "express-rate-limit";
-// import redisClient from "./config/redisClient.js";
 
 const app = express();
 
@@ -106,7 +106,7 @@ startCleanUpCron();
 // Start server only after DB connection and schema sync complete
 const startServer = async () => {
   await authenticateDB();
-  // redisClient.connect();
+  await redisClient.connect();
 
   server.listen(process.env.SERVER_PORT, () => {
     logger.info("Server started successfully", {

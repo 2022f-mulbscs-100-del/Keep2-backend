@@ -1,4 +1,4 @@
-// import redisClient from "../../config/redisClient.js";
+import redisClient from "../../config/redisClient.js";
 import User from "../../Modals/UserModal.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
@@ -23,7 +23,8 @@ export const updateProfile = async (req, res, next) => {
 
   logger.info("User data from token:", { userData: userData });
 
-  // const cahedKey = `userProfile:${userData.id}`;
+  const cahedKey = `userProfile:${userData.id}`;
+  const userProfileEmailCached = `userProfile:${userData.email}`;
   try {
     const user = await User.findByPk(userData.id);
     if (!user) {
@@ -64,11 +65,13 @@ export const updateProfile = async (req, res, next) => {
       logger.info("MFA status updated", { MfaEnabled: MfaEnabled });
     }
     await user.save();
-    // await redisClient.del(cahedKey);
-    // await redisClient.del(`userProfile:${userData.email}`);
+    await redisClient.del(cahedKey);
+    await redisClient.del(userProfileEmailCached);
     //eslint-disable-next-line
     const { password, ...rest } = user.dataValues;
-    // await redisClient.set(cahedKey, JSON.stringify(rest));
+    await redisClient.set(cahedKey, JSON.stringify(rest), {
+      EX: 3600,
+    });
 
     res.status(200).json(rest);
     logger.info("User profile updated successfully", { rest: rest });

@@ -1,3 +1,4 @@
+import redisClient from "../../config/redisClient.js";
 import Notes from "../../Modals/notes.modal.js";
 import RemainderNotes from "../../Modals/RemainderNotes.modal.js";
 import { logger } from "../../utils/Logger.js";
@@ -11,6 +12,7 @@ export const remindersNotes = async (req, res, next) => {
     title,
     repeat,
   });
+  const cachedKey = `remainderNotes:${userId}`;
   try {
     const note = await Notes.findByPk(noteId);
     if (!note) {
@@ -23,22 +25,59 @@ export const remindersNotes = async (req, res, next) => {
       reminderDate: reminderDate.toISOString(),
     });
 
-    const reminderNote = await RemainderNotes.create({
-      noteId,
-      userId,
-      reminderTitle: title,
-      remainderTime: time,
-      repeatReminder: repeat,
-      nextReminderDate: reminderDate.toISOString(),
-      reminderStatus: false,
+    let reminderNote = await RemainderNotes.findOne({
+      where: { userId, noteId },
+      order: [["createdAt", "DESC"]],
     });
+
+    if (reminderNote) {
+      reminderNote.reminderTitle = title;
+      reminderNote.remainderTime = time;
+      reminderNote.repeatReminder = repeat;
+      reminderNote.nextReminderDate = reminderDate.toISOString();
+      reminderNote.reminderStatus = false;
+      await reminderNote.save();
+      logger.info("Existing reminder updated for note", {
+        userId,
+        noteId,
+        reminderId: reminderNote.id,
+      });
+    } else {
+      reminderNote = await RemainderNotes.create({
+        noteId,
+        userId,
+        reminderTitle: title,
+        remainderTime: time,
+        repeatReminder: repeat,
+        nextReminderDate: reminderDate.toISOString(),
+        reminderStatus: false,
+      });
+      logger.info("Reminder Note created successfully for userId: ", {
+        userId,
+        reminderId: reminderNote.id,
+      });
+    }
     note.hasReminder = true;
     await note.save();
     //  const reminders = await RemainderNotes.findAll({ where: { userId } ,include:[{
-    logger.info("Reminder Note created successfully for userId: ", {
+
+    const noteReminders = await RemainderNotes.findAll({
+      where: { userId, noteId },
+      include: [
+        {
+          model: Notes,
+          as: "note",
+          where: { isDeleted: false },
+        },
+      ],
+    });
+    await redisClient.hSet(cachedKey, noteId, JSON.stringify(noteReminders));
+    await redisClient.expire(cachedKey, 3600);
+    logger.info("Reminder Note cached in Redis for userId: ", {
       userId,
       reminderId: reminderNote.id,
     });
+
     res.json(reminderNote);
     // res.json(reminders);
   } catch (error) {

@@ -3,22 +3,25 @@ import Notes from "../../Modals/notes.modal.js";
 import { logger } from "../../utils/Logger.js";
 import User from "../../Modals/UserModal.js";
 import Collaborators from "../../Modals/collaborators.modal.js";
-// import redisClient from "../../config/redisClient.js";
+import redisClient from "../../config/redisClient.js";
 
 export const getNotes = async (req, res) => {
   const { id: userId } = req.user;
   logger.info("Fetching notes", { userId, user: req.user });
   logger.info("Fetching notes for userId: ", { userId });
 
-  // const cachedKey = `notes:${userId}`;
-  // const cachedData = await redisClient.hVals(cachedKey);
-  // console.log("Cached data from Redis: ", cachedData);
-  // if (cachedData && cachedData.length > 0) {
-  //   logger.info("Notes fetched from cache for userId: ", { userId, noteCount: cachedData.length });
+  const cachedKey = `notes:${userId}`;
+  const cachedData = await redisClient.hVals(cachedKey);
+  console.log("Cached data from Redis: ", cachedData);
+  if (cachedData && cachedData.length > 0) {
+    logger.info("Notes fetched from cache for userId: ", {
+      userId,
+      noteCount: cachedData.length,
+    });
 
-  //   const notes = cachedData.map((note) => JSON.parse(note));
-  //   return res.json(notes);
-  // }
+    const notes = cachedData.map((note) => JSON.parse(note));
+    return res.json(notes);
+  }
 
   const user = await User.findByPk(userId);
 
@@ -55,12 +58,12 @@ export const getNotes = async (req, res) => {
   });
 
   // Cache the notes in Redis
-  // const pipeline = redisClient.multi(); // works like pipeline
-  // allNotes.forEach((note) => {
-  //   pipeline.hSet(cachedKey, note.id, JSON.stringify(note));
-  // });
-  // pipeline.expire(cachedKey, 3600);
-  // await pipeline.exec();
+  const pipeline = redisClient.multi(); // works like pipeline
+  allNotes.forEach((note) => {
+    pipeline.hSet(cachedKey, note.id, JSON.stringify(note));
+  });
+  pipeline.expire(cachedKey, 3600);
+  await pipeline.exec();
 
   logger.info("Notes cached in Redis for userId: ", {
     userId,
