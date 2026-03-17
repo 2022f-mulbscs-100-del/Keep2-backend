@@ -103,17 +103,20 @@ app.use((err, req, res, next) => {
 //cron job
 startCleanUpCron();
 
-// Start server after DB connection
+// Start server only after DB connection and schema sync complete
+const startServer = async () => {
+  await authenticateDB();
+  // redisClient.connect();
 
-authenticateDB();
-// redisClient.connect();
-
-server.listen(process.env.SERVER_PORT, () => {
-  logger.info("Server started successfully", {
-    port: process.env.SERVER_PORT,
-    environment: process.env.NODE_ENV,
+  server.listen(process.env.SERVER_PORT, () => {
+    logger.info("Server started successfully", {
+      port: process.env.SERVER_PORT,
+      environment: process.env.NODE_ENV,
+    });
   });
-});
+};
+
+startServer();
 
 // Store all dates in ISO (always UTC)
 // Normalize all dates to UTC before doing math:
