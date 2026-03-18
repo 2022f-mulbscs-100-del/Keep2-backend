@@ -1,24 +1,32 @@
-import sequelize from "../config/db.confing";
+import { DataTypes } from "sequelize";
+import sequelize from "../config/db.confing.js";
 
 const ApiKeyModal = sequelize.define(
   "ApiKey",
   {
     id: {
-      type: sequelize.Sequelize.INTEGER,
+      type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
+    apiKeyName: {
+      type: DataTypes.STRING,
+    },
     key: {
-      type: sequelize.Sequelize.STRING,
-      allowNull: false,
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     userId: {
-      type: sequelize.Sequelize.INTEGER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     isActive: {
-      type: sequelize.Sequelize.BOOLEAN,
+      type: DataTypes.BOOLEAN,
       defaultValue: true,
+    },
+    lastUsedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
