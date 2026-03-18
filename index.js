@@ -23,6 +23,7 @@ import CollaboratorsRoute from "./Routes/CollaboratorsRoute.js";
 import http from "http";
 import { initializeSocket } from "./socket/socket.js";
 import redisClient from "./config/redisClient.js";
+import apikeyGenerator from "./Routes/ApiKeyGeneratorRoute.js";
 // import rateLimit from "express-rate-limit";
 
 const app = express();
@@ -75,6 +76,7 @@ app.use("/api", paymentRoute);
 app.use("/api", sendEmail);
 app.use("/api", verifyTurnstileToken);
 app.use("/api", CollaboratorsRoute);
+app.use("/api", apikeyGenerator);
 
 // app.use('/health', (req, res) => {
 //   throw new Error("Health check error"); // Simulate an error for testing
