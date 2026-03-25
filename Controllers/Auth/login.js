@@ -158,6 +158,7 @@ export const Login = async (req, res, next) => {
     res.status(200).json({
       rest,
       accessToken,
+      refreshToken,
     });
   } catch (error) {
     if (error.name === "ZodError") {

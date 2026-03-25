@@ -7,6 +7,35 @@ import ApiKeyModal from "../Modals/ApiKeys.modal.js";
 
 const route = express.Router();
 
+/**
+ * @swagger
+ * /generateApiKey:
+ *   post:
+ *     summary: Generate a new API key
+ *     description: Generate a new API key for the authenticated user.
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name/description for the API key
+ *                 example: "My API Key"
+ *     responses:
+ *       201:
+ *         description: API key generated successfully
+ *       401:
+ *         description: Unauthorized
+ */
 route.post("/generateApiKey", VerifyToken, async (req, res) => {
   const { id } = req.user;
   const { name } = req.body;
@@ -31,6 +60,34 @@ route.post("/generateApiKey", VerifyToken, async (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /revokeApiKey:
+ *   post:
+ *     summary: Revoke an API key (legacy)
+ *     description: Revoke an API key by providing the plain key.
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - apiKey
+ *             properties:
+ *               apiKey:
+ *                 type: string
+ *                 example: "sk_..."
+ *     responses:
+ *       200:
+ *         description: API key revoked successfully
+ *       404:
+ *         description: API key not found
+ */
 route.post("/revokeApiKey", VerifyToken, async (req, res) => {
   const { id } = req.user;
   const { apiKey } = req.body;
@@ -48,6 +105,28 @@ route.post("/revokeApiKey", VerifyToken, async (req, res) => {
   res.json({ message: "API key revoked successfully" });
 });
 
+/**
+ * @swagger
+ * /api-keys/{apiKeyId}/last-used:
+ *   patch:
+ *     summary: Mark API key as used
+ *     description: Update the lastUsedAt timestamp for an API key.
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: apiKeyId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: API key usage updated
+ *       404:
+ *         description: API key not found
+ */
 route.patch("/api-keys/:apiKeyId/last-used", VerifyToken, async (req, res) => {
   const { id } = req.user;
   const { apiKeyId } = req.params;
@@ -70,6 +149,28 @@ route.patch("/api-keys/:apiKeyId/last-used", VerifyToken, async (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api-keys/{apiKeyId}/revoke:
+ *   patch:
+ *     summary: Revoke an API key by ID
+ *     description: Revoke/deactivate an API key by its ID.
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: apiKeyId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: API key revoked successfully
+ *       404:
+ *         description: API key not found
+ */
 route.patch("/api-keys/:apiKeyId/revoke", VerifyToken, async (req, res) => {
   const { id } = req.user;
   const { apiKeyId } = req.params;
@@ -91,6 +192,31 @@ route.patch("/api-keys/:apiKeyId/revoke", VerifyToken, async (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api-keys:
+ *   get:
+ *     summary: Get all active API keys
+ *     description: Retrieve all active API keys for the authenticated user.
+ *     tags:
+ *       - API Keys
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: API keys retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 apiKeys:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized
+ */
 route.get("/api-keys", VerifyToken, async (req, res) => {
   const { id } = req.user;
   const apiKeys = await ApiKeyModal.findAll({

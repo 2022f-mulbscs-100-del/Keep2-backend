@@ -99,6 +99,7 @@ export const signUpConfirmation = async (req, res, next) => {
       res.status(200).json({
         rest,
         accessToken,
+        refreshToken,
       });
     } else {
       logger.warn("signUpConfirmation failed: Invalid code for email: ", email);

@@ -12,14 +12,14 @@ logger.info("SandboxRoute initialized");
 
 /**
  * @swagger
- * /api/sandbox/generate:
+ * /generateSandbox:
  *   post:
  *     summary: Generate sandbox notes
  *     description: Generate test notes for the authenticated user. Notes will have random titles, descriptions, and pinned status depending on `useRandomData`.
  *     tags:
  *       - Sandbox
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -38,7 +38,7 @@ logger.info("SandboxRoute initialized");
  *                 description: If true, randomize note content and pinned status
  *                 example: true
  *     responses:
- *       200:
+ *       201:
  *         description: Notes generated successfully
  *         content:
  *           application/json:
@@ -52,17 +52,6 @@ logger.info("SandboxRoute initialized");
  *                   type: array
  *                   items:
  *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       title:
- *                         type: string
- *                       description:
- *                         type: string
- *                       pinned:
- *                         type: boolean
- *                       userId:
- *                         type: integer
  *       400:
  *         description: Bad request, invalid `numNotes` or missing `numNotes`
  *       401:
@@ -75,14 +64,14 @@ Sandboxroute.post("/generateSandbox", VerifyToken, generateSandbox);
 
 /**
  * @swagger
- * /api/sandbox/delete:
+ * /deleteSandbox:
  *   delete:
  *     summary: Delete all sandbox notes
  *     description: Delete all notes created by the authenticated user in the sandbox.
  *     tags:
  *       - Sandbox
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Sandbox notes deleted successfully

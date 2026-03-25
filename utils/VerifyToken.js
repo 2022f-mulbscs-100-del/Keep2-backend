@@ -1,14 +1,11 @@
 import jwt from "jsonwebtoken";
 import { ErrorHandler } from "./ErrorHandler.js";
+import ApiKeyModal from "../Modals/ApiKeys.modal.js";
 
 export const VerifyToken = (req, res, next) => {
-  // const apiKey = req.headers["x-api-key"];
-  // if (!apiKey) {
-  //   return next(ErrorHandler(401, "Api key is missing"));
-  // }
-  // if (apiKey !== process.env.API_KEY) {
-  //   return next();
-  // }
+  const apiKey = req.headers["x-api-key"];
+  console.log("API Key from header:->>>>>>>> ", apiKey);
+  console.log("Authorization header:->>>>>>>> ", req.headers.authorization);
 
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -21,9 +18,15 @@ export const VerifyToken = (req, res, next) => {
       return next(ErrorHandler(401, "No token provided"));
     }
 
-    jwt.verify(token, process.env.ACCESS_SECRET, (error, payload) => {
+    jwt.verify(token, process.env.ACCESS_SECRET, async (error, payload) => {
       if (error) {
         return next(ErrorHandler(401, "Wrong token"));
+      }
+      if (apiKey) {
+        const checkApiKey = await apiKeyVerification(payload, apiKey);
+        if (!checkApiKey) {
+          return next(ErrorHandler(401, "Invalid API key"));
+        }
       }
       req.user = payload;
       next();
@@ -32,3 +35,11 @@ export const VerifyToken = (req, res, next) => {
     next(error);
   }
 };
+
+async function apiKeyVerification(payload, key) {
+  const { id: userId } = payload;
+  const apiKey = await ApiKeyModal.findOne({
+    where: { key, userId },
+  });
+  return !!apiKey;
+}
