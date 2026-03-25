@@ -2,6 +2,7 @@ import { faker } from "@faker-js/faker";
 import { logger } from "../utils/Logger.js";
 import Notes from "../Modals/notes.modal.js";
 import { ErrorHandler } from "../utils/ErrorHandler.js";
+import redisClient from "../config/redisClient.js";
 
 export const generateSandbox = async (req, res, next) => {
   const { id: userId } = req.user;
@@ -11,6 +12,7 @@ export const generateSandbox = async (req, res, next) => {
     numNotes,
     useRandomData,
   });
+  const cachedKey = `notes:${userId}`;
   if (numNotes <= 0 || numNotes > 100) {
     logger.warn("Invalid numNotes value", { numNotes });
     next(ErrorHandler(400, "numNotes must be between 1 and 100"));
@@ -41,6 +43,13 @@ export const generateSandbox = async (req, res, next) => {
           notesCount++;
           sandboxNotes.push(newNotes);
         }
+        const pipeline = redisClient.multi(); // works like pipeline
+        sandboxNotes.forEach((note) => {
+          pipeline.hSet(cachedKey, note.id, JSON.stringify(note));
+        });
+        pipeline.expire(cachedKey, 3600);
+        await pipeline.exec();
+
         res.status(200).json({
           message: "Generated " + notesCount + " Notes Successfully",
           notes: sandboxNotes,
@@ -58,6 +67,7 @@ export const deleteSandbox = async (req, res, next) => {
   try {
     await Notes.destroy({ where: { userId } });
     res.status(200).json({ message: "Deleted  Notes Successfully" });
+    await redisClient.del(`notes:${userId}`);
   } catch (error) {
     next(error);
   }

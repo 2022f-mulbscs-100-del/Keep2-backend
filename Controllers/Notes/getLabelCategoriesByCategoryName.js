@@ -28,7 +28,7 @@ export const getLabelCategoriesByCategoryName = async (req, res, next) => {
         {
           model: Notes,
           as: "note",
-          where: { isDeleted: false },
+          where: { isDisabled: false },
         },
       ],
     });

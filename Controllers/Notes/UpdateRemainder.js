@@ -36,7 +36,8 @@ export const updateRemainder = async (req, res, next) => {
     remainderNote.nextReminderDate =
       reminderDate.toISOString() || remainderNote.nextReminderDate;
     remainderNote.remainderTime = time || remainderNote.remainderTime;
-    remainderNote.repeatReminder = repeat || remainderNote.repeatReminder;
+    remainderNote.repeatReminder =
+      repeat !== undefined ? repeat : remainderNote.repeatReminder;
 
     await remainderNote.save();
     const noteReminders = await RemainderNotes.findAll({
