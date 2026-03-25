@@ -509,7 +509,7 @@ route.get("/deletedNotes", VerifyToken, NotesController.getDeletedNotes);
 
 route.get("/archivedNotes", VerifyToken, NotesController.getArchivedNotes);
 
-//---------------------  GET REMINDER NOTES ---------------------
+//---------------------  CREATE REMINDER NOTES ---------------------
 /**
  * @swagger
  * /createReminder:
@@ -611,6 +611,8 @@ route.get("/archivedNotes", VerifyToken, NotesController.getArchivedNotes);
  */
 
 route.post("/createReminder", VerifyToken, NotesController.remindersNotes);
+
+//---------------------  GET REMINDER NOTES ---------------------
 
 /**
  * @swagger
@@ -1098,7 +1100,7 @@ route.put(
  *         description: Server error
  */
 
-route.get(
+route.delete(
   "/deleteLabelCategories/:id",
   VerifyToken,
   NotesController.deleteLabelCategory

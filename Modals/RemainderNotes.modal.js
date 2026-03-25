@@ -25,7 +25,7 @@ const RemainderNotes = sequelize.define(
       allowNull: false,
     },
     repeatReminder: {
-      type: DataTypes.ENUM("daily", "weekly", "monthly", "yearly"),
+      type: DataTypes.ENUM("null", "daily", "weekly", "monthly", "yearly"),
       allowNull: true,
       validate: {
         isIn: {
