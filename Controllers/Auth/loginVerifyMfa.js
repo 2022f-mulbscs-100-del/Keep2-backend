@@ -71,6 +71,7 @@ export const LoginVerifyMFA = async (req, res, next) => {
     res.status(200).json({
       rest,
       accessToken,
+      refreshToken,
     });
   } catch (error) {
     logger.error("LoginVerifyMFA error for email: ", { email }, " - ", {

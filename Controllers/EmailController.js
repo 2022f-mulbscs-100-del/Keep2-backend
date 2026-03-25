@@ -4,11 +4,11 @@ import { logger } from "../utils/Logger.js";
 import { BrevoValidation } from "../validation/BrevoValidation.js";
 
 export const EmailController = async (req, res, next) => {
-  const { email, name, templateId } = BrevoValidation.parse(req.body);
-  const { params } = req.body;
-  logger.info("Email request received", { email, templateId });
-
   try {
+    const { email, name, templateId } = BrevoValidation.parse(req.body);
+    const { params } = req.body;
+    logger.info("Email request received", { email, templateId });
+
     if (!email || !name || !templateId) {
       logger.warn("Invalid email parameters", { email, name, templateId });
       return next(ErrorHandler(400, "Please provide all required fields"));
@@ -37,6 +37,14 @@ export const EmailController = async (req, res, next) => {
       logger.warn("Login validation failed", { errors: error.errors });
       return next(ErrorHandler(400, error.errors[0].message));
     }
+
+    if (error.response?.status === 400) {
+      logger.warn("Brevo rejected email payload", {
+        brevoMessage: error.response?.data,
+      });
+      return next(ErrorHandler(400, "Brevo rejected email payload"));
+    }
+
     logger.error("Login error", {
       email: req.body?.email,
       message: error.message,

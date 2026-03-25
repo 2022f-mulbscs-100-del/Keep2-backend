@@ -16,7 +16,7 @@ logger.info("AuthRoute initialized");
  * /login:
  *   post:
  *     summary: User login
- *     description: Authenticate user with email and password. Returns access token and refresh token cookie.
+ *     description: Authenticate user with email and password. May require additional verification (email confirmation, 2FA, MFA, or passkey) based on user setup.
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -32,13 +32,15 @@ logger.info("AuthRoute initialized");
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: john@example.com
  *               password:
  *                 type: string
+ *                 example: password123
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: Login successful with access token
  *       201:
- *         description: Email verification required
+ *         description: Email verification required, 2FA enabled, MFA enabled, or Passkey enabled
  *       400:
  *         description: Invalid credentials or user not found
  */
@@ -49,7 +51,7 @@ route.post("/login", AuthController.Login);
  * /signup:
  *   post:
  *     summary: User signup
- *     description: Register a new user.
+ *     description: Register a new user. A verification code is sent to the email address provided.
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -59,19 +61,33 @@ route.post("/login", AuthController.Login);
  *           schema:
  *             type: object
  *             required:
+ *               - name
  *               - email
  *               - password
  *             properties:
+ *               name:
+ *                 type: string
+ *                 example: John Doe
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: john@example.com
  *               password:
  *                 type: string
+ *                 example: password123
  *     responses:
  *       201:
- *         description: User created successfully
+ *         description: User created successfully. Verification code sent to email.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: verify email
  *       400:
- *         description: Invalid input
+ *         description: Invalid input or user already exists
  */
 route.post("/signup", AuthController.SignUp);
 
@@ -91,6 +107,40 @@ route.get("/logout", AuthController.Logout);
 
 // -------------------- Code Confirmation Route --------------------
 
+/**
+ * @swagger
+ * /signUpConfirmation:
+ *   post:
+ *     summary: Confirm signup with verification code
+ *     description: Confirm email during signup by providing the verification code sent to the email.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               code:
+ *                 type: string
+ *                 description: 6-digit verification code
+ *                 example: "123456"
+ *     responses:
+ *       200:
+ *         description: Email confirmed successfully. Tokens returned.
+ *       400:
+ *         description: Invalid or expired code
+ *       404:
+ *         description: User not found
+ */
 route.post("/signUpConfirmation", AuthController.signUpConfirmation);
 
 /**
@@ -157,6 +207,7 @@ route.post("/reset-password", AuthController.resetPassword);
  * /forget-password-token:
  *   post:
  *     summary: Generate forget password token
+ *     description: Generate a password reset token and send it to user's email. Token expires in 15 minutes.
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -171,11 +222,26 @@ route.post("/reset-password", AuthController.resetPassword);
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: user@example.com
  *     responses:
  *       200:
- *         description: Token sent successfully
- *       400:
- *         description: Email not found
+ *         description: Reset token sent and returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 uniqueToken:
+ *                   type: string
+ *                   description: 6-digit reset token
+ *                   example: "123456"
+ *                 message:
+ *                   type: string
+ *                   example: "token generated sucessfully"
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Email sending failed
  */
 route.post("/forget-password-token", AuthController.forgetPasswordToken);
 
@@ -296,11 +362,69 @@ route.get("/auth/github", AuthController.LoginWithGithub);
 route.get("/auth/github/callback", AuthController.GithubCallback);
 
 // ---------------------- Pass key Route --------------------
+/**
+ * @swagger
+ * /passkey-registration:
+ *   post:
+ *     summary: Register a passkey for the user
+ *     description: Initiate passkey registration using WebAuthn for the authenticated user.
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Passkey registration initiated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 challenge:
+ *                   type: string
+ *                 rp:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Registration failed
+ */
 route.post(
   "/passkey-registration",
   VerifyToken,
   AuthController.passKeyRegistration
 );
+
+/**
+ * @swagger
+ * /passkey-verification:
+ *   post:
+ *     summary: Verify passkey registration
+ *     description: Complete passkey verification after WebAuthn ceremony for the authenticated user.
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - response
+ *             properties:
+ *               response:
+ *                 type: object
+ *                 description: WebAuthn attestation response
+ *     responses:
+ *       200:
+ *         description: Passkey verified successfully
+ *       400:
+ *         description: Invalid response or verification failed
+ *       401:
+ *         description: Unauthorized
+ */
 route.post(
   "/passkey-verification",
   VerifyToken,

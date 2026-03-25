@@ -72,7 +72,7 @@ route.get("/notes", VerifyToken, NotesController.getNotes);
  * /addnotes:
  *   post:
  *     summary: Create a new note
- *     description: Creates a new note for the authenticated user.
+ *     description: Creates a new note for the authenticated user. Client provides unique ID.
  *     tags:
  *       - Notes
  *     security:
@@ -84,9 +84,14 @@ route.get("/notes", VerifyToken, NotesController.getNotes);
  *           schema:
  *             type: object
  *             required:
+ *               - id
  *               - title
  *               - description
  *             properties:
+ *               id:
+ *                 type: integer
+ *                 description: Unique client-generated ID
+ *                 example: 12345
  *               title:
  *                 type: string
  *                 example: Grocery List
@@ -96,8 +101,12 @@ route.get("/notes", VerifyToken, NotesController.getNotes);
  *               pinned:
  *                 type: boolean
  *                 example: false
+ *               category:
+ *                 type: string
+ *                 example: personal
  *               catgeory:
  *                 type: string
+ *                 description: (Deprecated - use category instead)
  *                 example: personal
  *               list:
  *                 type: array
@@ -105,7 +114,7 @@ route.get("/notes", VerifyToken, NotesController.getNotes);
  *                   type: string
  *                 example: ["milk", "bread", "eggs"]
  *     responses:
- *       200:
+ *       201:
  *         description: Note created successfully
  *         content:
  *           application/json:

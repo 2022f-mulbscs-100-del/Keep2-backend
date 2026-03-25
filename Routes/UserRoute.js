@@ -11,12 +11,12 @@ logger.info("UserRoute initialized");
 
 /**
  * @swagger
- * /api/user/profile:
+ * /api/userProfile:
  *   get:
  *     summary: Get logged-in user's profile
  *     description: Fetch the profile of the authenticated user. In development mode, it includes the associated Auth details excluding the password.
  *     tags:
- *       - Users
+ *       - User
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -67,11 +67,11 @@ route.get("/userProfile", VerifyToken, UserController.userProfile);
  * /updateProfile:
  *   patch:
  *     summary: Update user profile
- *     description: Update profile information of the authenticated user. Supports updating name, profile image, 2FA settings, auto-logout, layout, and MFA.
+ *     description: Update profile information of the authenticated user. Individual fields can be selectively updated.
  *     tags:
  *       - User
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -81,6 +81,7 @@ route.get("/userProfile", VerifyToken, UserController.userProfile);
  *             properties:
  *               profileData:
  *                 type: object
+ *                 description: Object containing fields to update
  *                 properties:
  *                   name:
  *                     type: string
@@ -104,6 +105,7 @@ route.get("/userProfile", VerifyToken, UserController.userProfile);
  *                   layout:
  *                     type: string
  *                     example: "dark"
+ *                     enum: ["light", "dark"]
  *     responses:
  *       200:
  *         description: User profile updated successfully
@@ -149,13 +151,12 @@ route.get("/userProfile", VerifyToken, UserController.userProfile);
  *       400:
  *         description: Bad Request - Invalid input data
  *       401:
- *         description: Unauthorized - Invalid or missing token
+ *         description: Unauthorized - Missing or invalid token
  *       404:
  *         description: User not found
  *       500:
  *         description: Internal server error
  */
-
 route.patch("/updateProfile", VerifyToken, UserController.updateProfile);
 
 /**
@@ -163,11 +164,11 @@ route.patch("/updateProfile", VerifyToken, UserController.updateProfile);
  * /deleteProfile:
  *   delete:
  *     summary: Delete user profile
- *     description: Delete the profile of the authenticated user. Requires the user's password for verification. Deletes the user from the database and Stripe.
+ *     description: Delete the profile of the authenticated user. Requires the user's password for verification. Deletes the user from the database and Stripe if configured.
  *     tags:
  *       - User
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -207,7 +208,7 @@ route.delete("/deleteProfile", VerifyToken, UserController.DeleteProfile);
 
 /**
  * @swagger
- * /api/users/{email}:
+ * /getUser/{email}:
  *   get:
  *     summary: Get user by email
  *     description: Fetch user details by email. Returns basic profile information including name, email, and profile image.

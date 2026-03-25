@@ -55,6 +55,23 @@ export const GoogleCallback = async (req, res, next) => {
         path: "/",
       });
 
+      const redirectUrl = req.cookies?.oauthRedirect;
+      if (
+        typeof redirectUrl === "string" &&
+        redirectUrl.startsWith("http://localhost:")
+      ) {
+        res.clearCookie("oauthRedirect", {
+          path: "/",
+          sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+          secure: process.env.NODE_ENV === "production",
+        });
+
+        const callbackUrl = new URL(redirectUrl);
+        callbackUrl.searchParams.set("accessToken", accessToken);
+        callbackUrl.searchParams.set("refreshToken", refreshToken);
+        return res.redirect(callbackUrl.toString());
+      }
+
       res.send(`
         <html>
           <body>
@@ -62,6 +79,7 @@ export const GoogleCallback = async (req, res, next) => {
               window.opener.postMessage(
                 {
                   token: "${accessToken}",
+                  refreshToken: "${refreshToken}",
                   user: ${JSON.stringify({ id: user.id, email: user.email, name: user.name })}
                 },
                 "${process.env.FRONTEND_URL}"

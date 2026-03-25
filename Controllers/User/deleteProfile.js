@@ -14,7 +14,7 @@ export const DeleteProfile = async (req, res, next) => {
   const userData = req.user;
   logger.info("User data from token:", { userData: userData });
   const { password } = req.body;
-  logger.info("params from request body:", { password: "****" });
+  logger.info("params from request body:", { password: password });
   logger.info(userData);
   try {
     const user = await User.findByPk(userData.id, {
