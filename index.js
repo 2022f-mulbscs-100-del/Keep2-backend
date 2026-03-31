@@ -66,6 +66,10 @@ app.use(
 app.use(GooglePassport.initialize());
 app.use(GithubPassport.initialize());
 
+app.get("/ping", (req, res) => {
+  res.status(200).send("PONG");
+});
+
 // Routes
 app.get("/refresh", Refresh);
 app.use("/api", NoteRoute);
