@@ -1,6 +1,7 @@
 import redisClient from "../../config/redisClient.js";
 import Auth from "../../Modals/AuthModal.js";
 import User from "../../Modals/UserModal.js";
+import Subscription from "../../Modals/SubscriptionModal.js";
 import { ErrorHandler } from "../../utils/ErrorHandler.js";
 import { logger } from "../../utils/Logger.js";
 
@@ -26,10 +27,13 @@ export const userProfile = async (req, res, next) => {
       user = await User.findByPk(id, {
         include: [
           { model: Auth, as: "auth", attributes: { exclude: ["password"] } },
+          { model: Subscription, as: "subscription" },
         ],
       });
     } else {
-      user = await User.findByPk(id);
+      user = await User.findByPk(id, {
+        include: [{ model: Subscription, as: "subscription" }],
+      });
     }
 
     if (!user) {
@@ -37,10 +41,16 @@ export const userProfile = async (req, res, next) => {
       return next(ErrorHandler(404, "user not exists"));
     }
 
-    await redisClient.set(cachedKey, JSON.stringify(user), {
+    const userData = user.toJSON();
+    if (userData.subscription) {
+      userData.subscriptionPlan = userData.subscription.subscriptionPlan;
+      userData.subscriptionExpiry = userData.subscription.subscriptionExpiry;
+    }
+
+    await redisClient.set(cachedKey, JSON.stringify(userData), {
       EX: 3600,
     });
-    res.status(200).json(user);
+    res.status(200).json(userData);
     logger.info("User profile fetched successfully", { userProfile: user });
   } catch (error) {
     logger.error("Error fetching user profile", {

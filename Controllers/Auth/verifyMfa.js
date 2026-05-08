@@ -4,6 +4,7 @@ import { logger } from "../../utils/Logger.js";
 import speakeasy from "speakeasy";
 import Auth from "../../Modals/AuthModal.js";
 import { TwoFaValidation } from "../../validation/authValidation.js";
+import redisClient from "../../config/redisClient.js";
 
 export const VerifyMFA = async (req, res, next) => {
   //------ validate request body
@@ -51,6 +52,9 @@ export const VerifyMFA = async (req, res, next) => {
     user.MfaEnabled = true;
     await user.save();
     await auth.save();
+
+    const cachedKey = `userProfile:${user.id}`;
+    await redisClient.del(cachedKey);
 
     logger.info("MFA enabled successfully for email: ", { email });
 

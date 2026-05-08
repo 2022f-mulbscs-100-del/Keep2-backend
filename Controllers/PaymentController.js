@@ -1,10 +1,11 @@
 import { logger } from "../utils/Logger.js";
 import User from "../Modals/UserModal.js";
-import { ErrorHandler } from "../utils/ErrorHandler.js";
+// import { ErrorHandler } from "../utils/ErrorHandler.js";
 // import { NormalizeDate } from "../utils/NormalizeDate.js";
 import { CalculateProration } from "../utils/CalculateProration.js";
 import Subscription from "../Modals/SubscriptionModal.js";
 import { getStripeClient } from "../utils/StripeClient.js";
+import redisClient from "../config/redisClient.js";
 
 export const SubscriptionPaymentIntent = async (req, res, next) => {
   const stripe = getStripeClient();
@@ -127,6 +128,7 @@ export const SubscriptionPaymentIntent = async (req, res, next) => {
 // webhookHandler to handle stripe webhooks
 export const webhookHandler = async (req, res, next) => {
   const stripe = getStripeClient();
+
   if (!stripe) {
     return res
       .status(503)
@@ -134,6 +136,7 @@ export const webhookHandler = async (req, res, next) => {
   }
 
   logger.info("Webhook handler called");
+
   const sig = req.headers["stripe-signature"];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -149,6 +152,8 @@ export const webhookHandler = async (req, res, next) => {
 
   try {
     logger.info("Event type:", { event_type: event.type });
+    // when user subscribes
+
     if (event.type === "payment_intent.succeeded") {
       const paymentIntent = event.data.object;
       const userId = paymentIntent.metadata.userId;
@@ -158,47 +163,42 @@ export const webhookHandler = async (req, res, next) => {
       const user = await User.findByPk(userId, {
         include: [{ model: Subscription, as: "subscription" }],
       });
-
-      const subscription = user.subscription;
-      const now = new Date();
       if (!user) {
         logger.error("User not found for id from webhook:", userId);
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (paymentIntent.metadata.type === "upgrade_subscription") {
-        logger.info(
-          "Processing upgrade subscription for user id from webhook:",
-          { paymentIntent }
-        );
+      const now = new Date();
+      const currentDate = new Date();
+      const nextBillingDate = new Date(
+        plan === "yearly"
+          ? currentDate.setFullYear(currentDate.getFullYear() + 1)
+          : currentDate.setMonth(currentDate.getMonth() + 1)
+      );
 
-        const currentDate = new Date();
-        const nextBillingDate = new Date(
-          currentDate.setFullYear(currentDate.getFullYear() + 1)
-        );
+      let subscription = user.subscription;
+      if (!subscription) {
+        logger.warn("Missing subscription row for user; creating one now", {
+          userId,
+          plan,
+        });
+        subscription = await Subscription.create({
+          userId,
+          subscriptionPlan: plan,
+          subscriptionExpiry: nextBillingDate.toISOString(),
+          subscriptionStartDate: now.toISOString(),
+        });
+        user.subscriptionStatus = "active";
+        await user.save();
+        redisClient.del(`userProfile:${userId}`);
+        redisClient.del(`userProfile:${user.email}`);
+      } else {
         subscription.subscriptionExpiry = nextBillingDate.toISOString();
         subscription.subscriptionStartDate = now.toISOString();
-        subscription.subscriptionPlan = "yearly";
-        await subscription.save();
-        res.json({ received: true });
-        return;
-      }
-
-      if (plan === "monthly") {
-        const now = new Date();
-        const currentDate = new Date();
-        const nextBillingDate = new Date(
-          currentDate.setMonth(currentDate.getMonth() + 1)
-        );
-        subscription.subscriptionExpiry = nextBillingDate.toISOString(); //2026-01-09T11:06:35.063Z --ISOStRING
-        subscription.subscriptionStartDate = now.toISOString();
-      } else if (plan === "yearly") {
-        const currentDate = new Date();
-        const nextBillingDate = new Date(
-          currentDate.setFullYear(currentDate.getFullYear() + 1)
-        );
-        subscription.subscriptionExpiry = nextBillingDate.toISOString();
-        subscription.subscriptionStartDate = now.toISOString();
+        user.subscriptionStatus = "active";
+        await user.save();
+        redisClient.del(`userProfile:${userId}`);
+        redisClient.del(`userProfile:${user.email}`);
       }
 
       const paymentIntentDetails =
@@ -211,17 +211,21 @@ export const webhookHandler = async (req, res, next) => {
       logger.info("Attaching payment method for user id from webhook:", {
         paymentMethodId: paymentMethodId,
       });
+
       await stripe.paymentMethods.attach(paymentMethodId, {
         customer: user.stripeCustomerId,
       });
+
       logger.info("Updating default payment method for user id from webhook:", {
         paymentMethodId: paymentMethodId,
       });
+
       await stripe.customers.update(user.stripeCustomerId, {
         invoice_settings: {
           default_payment_method: paymentMethodId,
         },
       });
+
       logger.info("updating db for user id from webhook:", { userId });
       user.subscriptionStatus = "active";
       user.subscriptionPlan = plan;
@@ -242,6 +246,7 @@ export const webhookHandler = async (req, res, next) => {
 // to create a setup intent for saving payment methods without charging
 export const setUpIntent = async (req, res, next) => {
   const stripe = getStripeClient();
+
   if (!stripe) {
     return res
       .status(503)
@@ -250,13 +255,13 @@ export const setUpIntent = async (req, res, next) => {
 
   const { id } = req.user;
 
-  const user = User.findByPk(id);
+  const user = await User.findByPk(id);
   if (!user) {
-    ErrorHandler(404, "User not found");
+    return res.status(404).json({ message: "User not found" });
   }
 
   if (!user.stripeCustomerId) {
-    ErrorHandler(400, "Stripe customer ID not found");
+    return res.status(400).json({ message: "Stripe customer ID not found" });
   }
   try {
     const setupIntent = await stripe.setupIntents.create({
@@ -398,19 +403,23 @@ export const UpgradeSubscription = async (req, res, next) => {
   }
 };
 
+// to cancel subscription
 export const CancelSubscription = async (req, res, next) => {
   const { id } = req.user;
   logger.info("CancelSubscription called for user id:", id);
+
   try {
     const user = await User.findByPk(id);
     if (!user) {
       logger.error("User not found for id:", id);
       return next(404, "User not found");
     }
-
+    redisClient.del(`userProfile:${user.id}`);
+    redisClient.del(`userProfile:${user.email}`);
     user.subscriptionStatus = "inactive";
     user.subscriptionPlan = null;
     user.subscriptionExpiry = null;
+    user.subscriptionStartDate = null;
     await user.save();
 
     logger.info("Subscription canceled for user id:", id);

@@ -5,6 +5,7 @@ import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import Auth from "../../Modals/AuthModal.js";
 import { emailValidation } from "../../validation/authValidation.js";
+import redisClient from "../../config/redisClient.js";
 
 export const generateMFA = async (req, res, next) => {
   //------ validate request body
@@ -50,6 +51,9 @@ export const generateMFA = async (req, res, next) => {
     user.MfaEnabled = false;
     await user.save();
     await auth.save();
+
+    const cachedKey = `userProfile:${user.id}`;
+    await redisClient.del(cachedKey);
 
     logger.info("MFA QR code generated and saved for email: ", email);
 
